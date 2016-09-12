@@ -1,0 +1,14 @@
+[package]
+name = "fdown"
+version = "0.1.0"
+authors = ["George Madrid <gmadrid@gmail.com>"]
+build = "build.rs"
+
+[build-dependencies]
+serde_codegen = "0.8"
+
+[dependencies]
+clap = "2"
+hyper = "*"
+serde = "0.8"
+serde_json = "0.8"

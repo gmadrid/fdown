@@ -1,0 +1,3 @@
+ODIR=`brew --prefix openssl`
+export OPENSSL_INCLUDE_DIR=${ODIR}/include
+export OPENSSL_ROOT_DIR=$ODIR
