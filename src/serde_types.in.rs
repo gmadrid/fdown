@@ -18,3 +18,16 @@ pub struct EntryDetail {
   pub visual: Option<EntryDetailVisual>
 }
 
+#[derive(Debug,Deserialize)]
+pub struct SubscriptionDetailCategory {
+  pub id: String,
+  pub label: Option<String>
+}
+
+#[derive(Debug,Deserialize)]
+pub struct SubscriptionDetail {
+  pub id: String,
+  pub website: Option<String>,
+  pub title: Option<String>,
+  pub categories: Vec<SubscriptionDetailCategory>
+}

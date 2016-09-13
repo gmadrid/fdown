@@ -101,15 +101,19 @@ fn main() {
   let userid = config.required_string("userid");
   let token = config.required_string("token");
   let feedly = feedly::new(userid, token);
-  let ids = feedly.saved_entry_ids().unwrap();
+  let subs = feedly.subscriptions().unwrap();
+  for sub in subs {
+    println!("{:?}", sub.title);
+  }
+//  let ids = feedly.saved_entry_ids().unwrap();
 
   // let ids = vec!(
   //   "cfBX1FTyBgWMD47LB+mDBO8xvSRPMYW+Yf70hpffjGI=_156bd0d2737:20fa60f:45cbc242".to_string(),
   //   "cfBX1FTyBgWMD47LB+mDBO8xvSRPMYW+Yf70hpffjGI=_1570b3456ad:b7c503e:e3157ec0".to_string(),
   //   "cfBX1FTyBgWMD47LB+mDBO8xvSRPMYW+Yf70hpffjGI=_156b6ba88b8:767b5a:e0992bbc".to_string()
   //   );
-  let details = feedly.detail_for_entries(ids).unwrap();
-  for detail in details.iter() {
-    process_entry(detail).map_err(|err| println!("{:?}", err));
-  }
+//  let details = feedly.detail_for_entries(ids).unwrap();
+//  for detail in details.iter() {
+    //process_entry(detail).map_err(|err| println!("{:?}", err));
+//  }
 }

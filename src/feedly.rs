@@ -1,4 +1,4 @@
-use generated::{EntryDetail,StreamsIdsResponse};
+use generated::{EntryDetail,StreamsIdsResponse,SubscriptionDetail};
 use hyper::Client;
 use hyper::header;
 use regex::Regex;
@@ -31,6 +31,17 @@ impl Feedly {
         .send());
     let response : StreamsIdsResponse = try!(serde_json::from_reader(response));
     Ok(response.ids)
+  }
+
+  pub fn subscriptions(&self) -> result::Result<Vec<SubscriptionDetail>> {
+    let client = Client::new();
+    let url = "http://cloud.feedly.com/v3/subscriptions";
+    let response = try!(client.get(url)
+        .header(self.auth_header())
+        .send());
+    let detail : Vec<SubscriptionDetail> = try!(serde_json::from_reader(response));
+    println!("{:?}", detail);
+    Ok(detail)
   }
 
   pub fn detail_for_entries(&self, ids: Vec<String>) -> result::Result<Vec<EntryDetail>> {
