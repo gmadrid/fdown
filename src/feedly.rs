@@ -1,6 +1,7 @@
 use generated::{EntryDetail,StreamsIdsResponse};
 use hyper::Client;
 use hyper::header;
+use regex::Regex;
 use result;
 use serde_json;
 
@@ -44,7 +45,18 @@ impl Feedly {
     Ok(detail)
   }
 
-  pub fn extract_image_url(&self, detail: EntryDetail) -> Option<String> {
-    detail.visual.and_then(|v| v.url)
+  pub fn extract_image_url<'a>(detail: &'a EntryDetail) -> Option<&'a String> {
+    if let Some(ref visual) = detail.visual {
+      if let Some(ref url) = visual.url {
+        return Some(url);
+      }
+    }
+    None
+  }
+
+  pub fn tumblr_filter(url: &str) -> String {
+    // TODO: seems wasteful to create this regex every time.
+    let regex = Regex::new(r"_(\d+)(\.[:alnum:]+)$").unwrap();
+    return regex.replace(url, "_1280$2");
   }
 }
