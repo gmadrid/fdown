@@ -44,8 +44,9 @@ pub fn new(filename: &str) -> result::Result<ConfigFile> {
 }
 
 impl ConfigFile {
-  pub fn required_string(&self, k: &str) -> &str {
-    self.values.get(k).unwrap() // expect(format!("Required config value, {}, missing.", k))
+  pub fn required_string(&self, k: &str) -> result::Result<&String> {
+    self.values.get(k).ok_or(
+        FdownError::BadConfig(format!("Required config value, {}, missing", k)))
   }
 }
 
@@ -56,5 +57,5 @@ fn split_line<'a>(line: &'a str) -> result::Result<(&'a str, &'a str)> {
     return Ok((key, value))
   }
 
-  Err(FdownError::BadFormat(format!("Missing '=' in config file: \"{}\"", line)))
+  Err(FdownError::BadConfig(format!("Missing '=' in config file: \"{}\"", line)))
 }

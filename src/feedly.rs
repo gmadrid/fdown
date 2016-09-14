@@ -10,11 +10,11 @@ pub struct Feedly {
   token: String
 }
 
-pub fn new(userid: &str, token: &str) -> Feedly {
-  Feedly { userid: userid.to_string(), token: token.to_string() }
-}
-
 impl Feedly {
+  pub fn new(userid: &str, token: &str) -> Feedly {
+    Feedly { userid: userid.to_string(), token: token.to_string() }
+  }
+
   fn saved_feed(&self) -> String {
     format!("user/{}/tag/global.saved", self.userid)
   }
@@ -40,7 +40,6 @@ impl Feedly {
         .header(self.auth_header())
         .send());
     let detail : Vec<SubscriptionDetail> = try!(serde_json::from_reader(response));
-    println!("{:?}", detail);
     Ok(detail)
   }
 

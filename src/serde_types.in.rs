@@ -12,10 +12,17 @@ pub struct EntryDetailVisual {
 }
 
 #[derive(Debug,Deserialize)]
+pub struct EntryDetailOrigin {
+  pub streamId: String,
+  pub title: Option<String>
+}
+
+#[derive(Debug,Deserialize)]
 pub struct EntryDetail {
   pub id: String,
   pub fingerprint: String,
-  pub visual: Option<EntryDetailVisual>
+  pub visual: Option<EntryDetailVisual>,
+  pub origin: Option<EntryDetailOrigin>
 }
 
 #[derive(Debug,Deserialize)]

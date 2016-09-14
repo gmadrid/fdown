@@ -5,6 +5,7 @@ use std::result;
 
 #[derive(Debug)]
 pub enum FdownError {
+  BadConfig(String),
   BadFormat(String),
   Hyper(hyper::Error),
   Io(io::Error),

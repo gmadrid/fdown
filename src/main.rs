@@ -77,12 +77,6 @@ fn unsave_entry(entry: &EntryDetail) -> result::Result<()> {
 }
 
 fn process_entry(entry: &EntryDetail) -> result::Result<()> {
-  // For each, 
-  // 1) get the url
-  // 2) if it's a tumblr url, get the big version
-  // 3) download the image 
-  // 4) save to Dropbox (with noclobber)
-  // 5) unsave
   if let Some(url) = Feedly::extract_image_url(entry) {
     let url = Feedly::tumblr_filter(url);
     let image_bytes = try!(download_image(&url));
@@ -94,17 +88,88 @@ fn process_entry(entry: &EntryDetail) -> result::Result<()> {
   Ok(())
 }
 
-fn main() {
-  let args = args::parse();
-  let config = config::new(args.config_file_location()).unwrap();
-
-  let userid = config.required_string("userid");
-  let token = config.required_string("token");
-  let feedly = feedly::new(userid, token);
-  let subs = feedly.subscriptions().unwrap();
+fn list_subs(feedly: &Feedly) -> result::Result<()> {
+  let subs = try!(feedly.subscriptions());
   for sub in subs {
-    println!("{:?}", sub.title);
+    // TODO: print something better.
+    let title = sub.title.unwrap_or(sub.id);
+    let first_cat = sub.categories.first();
+    match first_cat {
+      Some(cat) => {
+        let cat_title = cat.label.as_ref().unwrap_or(&cat.id);
+        println!("{}: {}", cat_title, title);
+      }
+      None => println!("{}", title)
+    }
   }
+  Ok(())  
+}
+
+fn filter_for_category(category: Option<&str>, feedly: &Feedly) 
+    -> result::Result<Box<Fn(&EntryDetail) -> bool>> {
+  if let Some(category) = category {
+    let subs = try!(feedly.subscriptions());
+    let streamIds : Vec<String> = subs.iter().filter(|sub| {
+      let categories = &sub.categories;
+      categories.iter().any(|cat| cat.label.as_ref().map_or(false, |label| label == category))
+    })
+    .map(|sub| {
+      sub.id.to_string()
+    })
+    .collect();
+
+    let closure = move |entry : &EntryDetail| -> bool {
+      if let Some(ref origin) = entry.origin {
+        return streamIds.iter().any(|streamId| {
+          streamId == &origin.streamId
+        });
+      }
+      false
+    };
+    return Ok(Box::new(closure));
+  }
+  Ok(Box::new(|_| true))
+}
+
+fn get_entries(filter_func: &Fn(&EntryDetail) -> bool, feedly: &Feedly) 
+    -> result::Result<Vec<EntryDetail>> {
+  // TODO: give this a count param
+  // TODO: keep continuing until you have count entries
+  let ids = try!(feedly.saved_entry_ids());
+  let entries = try!(feedly.detail_for_entries(ids));
+  let res : Vec<EntryDetail> = entries.into_iter().filter(filter_func).collect();
+  Ok(res)
+}
+
+fn real_main() -> result::Result<()> {
+  let args = args::Args::parse();
+  let config = try!(config::new(args.config_file_location()));
+
+  let userid = try!(config.required_string("userid"));
+  let token = try!(config.required_string("token"));
+
+  let feedly = Feedly::new(userid, token);
+
+  if args.list_subs() {
+    return list_subs(&feedly);
+  }
+
+  let filter = try!(filter_for_category(args.filter_category(), &feedly));
+  let entries = try!(get_entries(filter.as_ref(), &feedly));
+
+  Ok(())
+}
+
+fn main() {
+  match real_main() {
+    Ok(_) => (),
+    Err(err) => println!("{:?}", err)
+  }
+
+  // if args.list_subs() {
+  //   list_subs(&feedly);    
+  //   return
+  // }
 //  let ids = feedly.saved_entry_ids().unwrap();
 
   // let ids = vec!(
