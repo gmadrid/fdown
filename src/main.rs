@@ -9,6 +9,7 @@ mod feedly;
 mod generated;
 mod result;
 
+use config::ConfigFile;
 use feedly::{Feedly};
 use generated::EntryDetail;
 use hyper::Client;
@@ -134,7 +135,7 @@ fn get_entries(filter_func: &Fn(&EntryDetail) -> bool, count: usize, feedly: &Fe
 
 fn real_main() -> result::Result<()> {
   let args = try!(args::Args::parse());
-  let config = try!(config::new(args.config_file_location()));
+  let config = try!(ConfigFile::new(args.config_file_location()));
 
   let userid = try!(config.required_string("userid"));
   let token = try!(config.required_string("token"));
