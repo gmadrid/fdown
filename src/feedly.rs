@@ -1,4 +1,4 @@
-use generated::{EntryDetail,StreamsIdsResponse,SubscriptionDetail};
+use generated::{EntryDetail,MarkerRequestBody,StreamsIdsResponse,SubscriptionDetail};
 use hyper::Client;
 use hyper::header;
 use regex::Regex;
@@ -31,6 +31,23 @@ impl Feedly {
         .send());
     let response : StreamsIdsResponse = try!(serde_json::from_reader(response));
     Ok(response.ids)
+  }
+
+  pub fn unsave_entries(&self, entries: &Vec<&EntryDetail>) -> result::Result<()> {
+    let client = Client::new();
+    let url = "http://cloud.feedly.com/v3/markers";
+    let entry_ids : Vec<String> = entries.iter().map(|e| e.id.clone()).collect();
+    let body_struct = MarkerRequestBody{ 
+        action: "markAsUnsaved".to_string(), 
+        type_field: "entries".to_string(), 
+        entry_ids: entry_ids};
+    let body : Vec<u8> = try!(serde_json::to_vec(&body_struct));
+    // TODO: should probably check the response.
+    try!(client.post(url)
+        .header(self.auth_header())
+        .body(body.as_slice())
+        .send());
+    Ok(())
   }
 
   pub fn subscriptions(&self) -> result::Result<Vec<SubscriptionDetail>> {

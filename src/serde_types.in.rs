@@ -13,7 +13,8 @@ pub struct EntryDetailVisual {
 
 #[derive(Debug,Deserialize)]
 pub struct EntryDetailOrigin {
-  pub streamId: String,
+  #[serde(rename="streamId")]
+  pub stream_id: String,
   pub title: Option<String>
 }
 
@@ -37,4 +38,13 @@ pub struct SubscriptionDetail {
   pub website: Option<String>,
   pub title: Option<String>,
   pub categories: Vec<SubscriptionDetailCategory>
+}
+
+#[derive(Debug,Serialize)]
+pub struct MarkerRequestBody {
+  pub action: String,
+  #[serde(rename="type")]
+  pub type_field: String,
+  #[serde(rename="entryIds")]  
+  pub entry_ids: Vec<String>
 }

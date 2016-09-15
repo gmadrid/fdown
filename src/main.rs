@@ -17,14 +17,6 @@ use std::fs::File;
 use std::io::Read;
 use std::io::Write;
 use std::path::{Path,PathBuf};
-use std::process::Command;
-
-fn open_url(url: &String) -> result::Result<()> {
-  let mut cmd = Command::new("open");
-  cmd.arg(url);
-  try!(cmd.spawn());
-  Ok(())
-}
 
 fn download_image(url: &String) -> result::Result<(Vec<u8>)> {
   let client = Client::new();
@@ -71,21 +63,20 @@ fn filepath_for_url(url: &String) -> result::Result<PathBuf> {
   Err(result::FdownError::BadFormat(format!("unable to extract filename from url: {}", url)))  
 }
 
-fn unsave_entry(entry: &EntryDetail) -> result::Result<()> {
-  // TODO: do this.
-  Ok(())
+fn unsave_entries(entries: &Vec<&EntryDetail>, feedly: &Feedly) -> result::Result<()> {
+  feedly.unsave_entries(entries)
 }
 
-fn process_entry(entry: &EntryDetail) -> result::Result<()> {
+fn write_entry(entry: &EntryDetail) -> result::Result<()> {
   if let Some(url) = Feedly::extract_image_url(entry) {
     let url = Feedly::tumblr_filter(url);
     let image_bytes = try!(download_image(&url));
     let path = try!(filepath_for_url(&url));
-    let mut foo = try!(File::create(path));
-    try!(foo.write(&image_bytes));
-    try!(unsave_entry(entry));
+    let mut file = try!(File::create(path));
+    try!(file.write(&image_bytes));
+    return Ok(());
   }
-  Ok(())
+  Err(result::FdownError::MissingUrl(entry.id.clone()))
 }
 
 fn list_subs(feedly: &Feedly) -> result::Result<()> {
@@ -109,7 +100,7 @@ fn filter_for_category(category: Option<&str>, feedly: &Feedly)
     -> result::Result<Box<Fn(&EntryDetail) -> bool>> {
   if let Some(category) = category {
     let subs = try!(feedly.subscriptions());
-    let streamIds : Vec<String> = subs.iter().filter(|sub| {
+    let stream_ids : Vec<String> = subs.iter().filter(|sub| {
       let categories = &sub.categories;
       categories.iter().any(|cat| cat.label.as_ref().map_or(false, |label| label == category))
     })
@@ -120,8 +111,8 @@ fn filter_for_category(category: Option<&str>, feedly: &Feedly)
 
     let closure = move |entry : &EntryDetail| -> bool {
       if let Some(ref origin) = entry.origin {
-        return streamIds.iter().any(|streamId| {
-          streamId == &origin.streamId
+        return stream_ids.iter().any(|stream_id| {
+          stream_id == &origin.stream_id
         });
       }
       false
@@ -156,6 +147,17 @@ fn real_main() -> result::Result<()> {
 
   let filter = try!(filter_for_category(args.filter_category(), &feedly));
   let entries = try!(get_entries(filter.as_ref(), &feedly));
+  let mut successful_entries : Vec<&EntryDetail> = Vec::with_capacity(entries.len());
+  for (i, entry) in entries.iter().enumerate() {
+    println!("Processing entry {}.", i);
+    match write_entry(entry) {
+      Ok(_) => successful_entries.push(entry),
+      Err(e) => return Err(e)
+    }
+  }
+  if args.should_unsave() {
+    try!(unsave_entries(&successful_entries, &feedly));
+  }
 
   Ok(())
 }
@@ -165,20 +167,4 @@ fn main() {
     Ok(_) => (),
     Err(err) => println!("{:?}", err)
   }
-
-  // if args.list_subs() {
-  //   list_subs(&feedly);    
-  //   return
-  // }
-//  let ids = feedly.saved_entry_ids().unwrap();
-
-  // let ids = vec!(
-  //   "cfBX1FTyBgWMD47LB+mDBO8xvSRPMYW+Yf70hpffjGI=_156bd0d2737:20fa60f:45cbc242".to_string(),
-  //   "cfBX1FTyBgWMD47LB+mDBO8xvSRPMYW+Yf70hpffjGI=_1570b3456ad:b7c503e:e3157ec0".to_string(),
-  //   "cfBX1FTyBgWMD47LB+mDBO8xvSRPMYW+Yf70hpffjGI=_156b6ba88b8:767b5a:e0992bbc".to_string()
-  //   );
-//  let details = feedly.detail_for_entries(ids).unwrap();
-//  for detail in details.iter() {
-    //process_entry(detail).map_err(|err| println!("{:?}", err));
-//  }
 }

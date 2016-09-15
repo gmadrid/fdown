@@ -4,6 +4,7 @@ static CONFIG: &'static str = "config";
 static CATEGORY: &'static str = "category";
 static DEFAULT_CONFIG: &'static str = "~/.fdown";
 static SUBS: &'static str = "subs";
+static UNSAVE: &'static str = "unsave";
 
 pub struct Args<'a> {
   matches: ArgMatches<'a>
@@ -21,6 +22,10 @@ impl<'a> Args<'a> {
 
   pub fn list_subs(&self) -> bool {
     self.matches.occurrences_of(SUBS) > 0
+  }
+
+  pub fn should_unsave(&self) -> bool {
+    self.matches.occurrences_of(UNSAVE) > 0
   }
 
   pub fn filter_category(&self) -> Option<&str> {
@@ -44,5 +49,10 @@ fn parse_cmd_line<'a>() -> ArgMatches<'a> {
       .arg(Arg::with_name(SUBS)
           .long(SUBS)
           .help("List the subscriptions"))
+      .arg(Arg::with_name(UNSAVE)
+          .short("U")
+          .long(UNSAVE)
+          .help("Unsave the entry after saving it.")
+          .requires(CATEGORY))
       .get_matches()
 }

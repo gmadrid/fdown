@@ -9,7 +9,8 @@ pub enum FdownError {
   BadFormat(String),
   Hyper(hyper::Error),
   Io(io::Error),
-  SerdeJson(serde_json::Error)
+  SerdeJson(serde_json::Error),
+  MissingUrl(String)
 }
 
 pub type Result<T> = result::Result<T,FdownError>;
