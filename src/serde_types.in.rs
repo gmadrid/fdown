@@ -8,7 +8,7 @@ pub struct StreamsIdsResponse {
 pub struct EntryDetailVisual {
   pub url: Option<String>,
   #[serde(rename="contentType")]
-  pub content_type: String
+  pub content_type: Option<String>
 }
 
 #[derive(Debug,Deserialize)]
@@ -21,7 +21,7 @@ pub struct EntryDetailOrigin {
 #[derive(Debug,Deserialize)]
 pub struct EntryDetail {
   pub id: String,
-  pub fingerprint: String,
+  pub fingerprint: Option<String>,
   pub visual: Option<EntryDetailVisual>,
   pub origin: Option<EntryDetailOrigin>
 }

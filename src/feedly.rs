@@ -25,7 +25,7 @@ impl Feedly {
 
   pub fn saved_entry_ids(&self) -> result::Result<Vec<String>> {
     let client = Client::new();
-    let url = format!("http://cloud.feedly.com/v3/streams/ids?streamId={}", self.saved_feed());
+    let url = format!("http://cloud.feedly.com/v3/streams/ids?streamId={}&count=100", self.saved_feed());
     let response = try!(client.get(&url)
         .header(self.auth_header())
         .send());
