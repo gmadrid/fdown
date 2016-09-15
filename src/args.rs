@@ -1,5 +1,7 @@
 use clap::{Arg, App, ArgMatches};
 use result;
+use std::env;
+use std::ffi::OsString;
 
 static CONFIG: &'static str = "config";
 static COUNT: &'static str = "count";
@@ -14,7 +16,12 @@ pub struct Args<'a> {
 
 impl<'a> Args<'a> {
   pub fn parse() -> result::Result<Args<'a>> {
-    let matches = try!(parse_cmd_line());
+    Args::parse_from(env::args_os())
+  }
+
+  fn parse_from<I, T>(itr: I) -> result::Result<Args<'a>>
+      where I: IntoIterator<Item=T>, T: Into<OsString> {
+    let matches = try!(parse_cmd_line_from(itr));
     Ok(Args { matches: matches })
   }
 
@@ -40,7 +47,8 @@ impl<'a> Args<'a> {
   }
 }
 
-fn parse_cmd_line<'a>() -> result::Result<ArgMatches<'a>> {
+fn parse_cmd_line_from<'a, I, T>(itr: I) -> result::Result<ArgMatches<'a>>
+    where I: IntoIterator<Item=T>, T: Into<OsString> {
   let builder = App::new("fdown")
       .version("0.0.1")
       .author("George Madrid (gmadrid@gmail.com)")
@@ -66,5 +74,91 @@ fn parse_cmd_line<'a>() -> result::Result<ArgMatches<'a>> {
           .help("Unsave the entry after saving it.")
           .requires(CATEGORY));
 
-    builder.get_matches_safe().map_err(result::FdownError::from)
+    builder.get_matches_from_safe(itr).map_err(result::FdownError::from)
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  fn args_from<'a, 'b, 'c>(lst: &'a[&'b str]) -> Args<'c> {
+    Args::parse_from(lst.iter()).unwrap()
+  } 
+
+  #[test]
+  fn count() {
+    // Test default
+    let args = args_from(&["foo"]);
+    assert_eq!(20, args.number_of_entries());
+
+    let args = args_from(&["foo", "--count", "57"]);
+    assert_eq!(57, args.number_of_entries());
+  }
+
+  #[test]
+  #[should_panic]
+  fn count_missing() {
+    args_from(&["foo", "--count"]);
+  }
+
+  #[test]
+  fn filter_category() {
+    let args = args_from(&["foo"]);
+    assert_eq!(None, args.filter_category());
+
+    let args = args_from(&["foo", "-C", "quux"]);
+    assert_eq!("quux", args.filter_category().unwrap());
+
+    let args = args_from(&["foo", "--category", "bam"]);
+    assert_eq!("bam", args.filter_category().unwrap());
+  }
+
+  #[test]
+  #[should_panic]
+  fn filter_category_missing() {
+    args_from(&["foo", "-C"]);
+  }
+
+  #[test]
+  fn subs() {
+    let args = args_from(&["foo", "--subs"]);
+    assert_eq!(true, args.list_subs());
+
+    let args = args_from(&["foo"]);
+    assert_eq!(false, args.list_subs());
+  }
+
+  #[test]
+  fn unsave() {
+    let args = args_from(&["foo", "-C", "cat"]);
+    assert_eq!(false, args.should_unsave());
+
+    let args = args_from(&["foo", "-C", "cat", "-U"]);
+    assert_eq!(true, args.should_unsave());
+
+    let args = args_from(&["foo", "-C", "cat", "--unsave"]);
+    assert_eq!(true, args.should_unsave());
+  }
+
+  #[test]
+  #[should_panic]
+  fn unsave_no_cat() {
+    args_from(&["foo", "-U"]);
+  }  
+
+  #[test]
+  fn config_file_location() {
+    let args = Args::parse_from(["foo", "--config", "foobar"].iter()).unwrap();
+    assert_eq!("foobar", args.config_file_location());
+
+    // Test default
+    let args = Args::parse_from(["foo"].iter()).unwrap();
+    assert_eq!("~/.fdown", args.config_file_location());    
+  }
+
+  #[should_panic]
+  #[test]
+  fn config_file_location_missing() {
+    Args::parse_from(["foo", "--config"].iter()).unwrap();
+  }
 }
