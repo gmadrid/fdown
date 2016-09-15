@@ -23,9 +23,9 @@ impl Feedly {
     header::Authorization(format!("OAuth {}", self.token).to_owned())
   }
 
-  pub fn saved_entry_ids(&self) -> result::Result<Vec<String>> {
+  pub fn saved_entry_ids(&self, count: usize) -> result::Result<Vec<String>> {
     let client = Client::new();
-    let url = format!("http://cloud.feedly.com/v3/streams/ids?streamId={}&count=100", self.saved_feed());
+    let url = format!("http://cloud.feedly.com/v3/streams/ids?streamId={}&count={}", self.saved_feed(), count);
     let response = try!(client.get(&url)
         .header(self.auth_header())
         .send());

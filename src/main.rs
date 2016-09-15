@@ -122,11 +122,11 @@ fn filter_for_category(category: Option<&str>, feedly: &Feedly)
   Ok(Box::new(|_| true))
 }
 
-fn get_entries(filter_func: &Fn(&EntryDetail) -> bool, feedly: &Feedly) 
+fn get_entries(filter_func: &Fn(&EntryDetail) -> bool, count: usize, feedly: &Feedly) 
     -> result::Result<Vec<EntryDetail>> {
   // TODO: give this a count param
   // TODO: keep continuing until you have count entries
-  let ids = try!(feedly.saved_entry_ids());
+  let ids = try!(feedly.saved_entry_ids(count));
   let entries = try!(feedly.detail_for_entries(ids));
   let res : Vec<EntryDetail> = entries.into_iter().filter(filter_func).collect();
   Ok(res)
@@ -146,7 +146,7 @@ fn real_main() -> result::Result<()> {
   }
 
   let filter = try!(filter_for_category(args.filter_category(), &feedly));
-  let entries = try!(get_entries(filter.as_ref(), &feedly));
+  let entries = try!(get_entries(filter.as_ref(), args.number_of_entries(), &feedly));
   let mut successful_entries : Vec<&EntryDetail> = Vec::with_capacity(entries.len());
   for (i, entry) in entries.iter().enumerate() {
     println!("Processing entry {}.", i);

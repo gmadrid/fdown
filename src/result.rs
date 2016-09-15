@@ -1,6 +1,7 @@
 use hyper;
 use serde_json;
 use std::io;
+use std::num;
 use std::result;
 
 #[derive(Debug)]
@@ -9,8 +10,9 @@ pub enum FdownError {
   BadFormat(String),
   Hyper(hyper::Error),
   Io(io::Error),
-  SerdeJson(serde_json::Error),
-  MissingUrl(String)
+  MissingUrl(String),
+  ParseIntError(num::ParseIntError),
+  SerdeJson(serde_json::Error)
 }
 
 pub type Result<T> = result::Result<T,FdownError>;
@@ -24,6 +26,12 @@ impl From<hyper::Error> for FdownError {
 impl From<io::Error> for FdownError {
   fn from(err: io::Error) -> FdownError {
     FdownError::Io(err)
+  }
+}
+
+impl From<num::ParseIntError> for FdownError {
+  fn from(err: num::ParseIntError) -> FdownError {
+    FdownError::ParseIntError(err)
   }
 }
 
