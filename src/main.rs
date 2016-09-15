@@ -64,7 +64,7 @@ fn filepath_for_url(url: &String) -> result::Result<PathBuf> {
   Err(result::FdownError::BadFormat(format!("unable to extract filename from url: {}", url)))  
 }
 
-fn unsave_entries(entries: &Vec<&EntryDetail>, feedly: &Feedly) -> result::Result<()> {
+fn unsave_entries<T>(entries: &Vec<&EntryDetail>, feedly: &Feedly<T>) -> result::Result<()> {
   feedly.unsave_entries(entries)
 }
 
@@ -80,7 +80,7 @@ fn write_entry(entry: &EntryDetail) -> result::Result<()> {
   Err(result::FdownError::MissingUrl(entry.id.clone()))
 }
 
-fn list_subs(feedly: &Feedly) -> result::Result<()> {
+fn list_subs<T>(feedly: &Feedly<T>) -> result::Result<()> {
   let subs = try!(feedly.subscriptions());
   for sub in subs {
     // TODO: print something better.
@@ -97,7 +97,7 @@ fn list_subs(feedly: &Feedly) -> result::Result<()> {
   Ok(())  
 }
 
-fn filter_for_category(category: Option<&str>, feedly: &Feedly) 
+fn filter_for_category<T>(category: Option<&str>, feedly: &Feedly<T>) 
     -> result::Result<Box<Fn(&EntryDetail) -> bool>> {
   if let Some(category) = category {
     let subs = try!(feedly.subscriptions());
@@ -123,7 +123,7 @@ fn filter_for_category(category: Option<&str>, feedly: &Feedly)
   Ok(Box::new(|_| true))
 }
 
-fn get_entries(filter_func: &Fn(&EntryDetail) -> bool, count: usize, feedly: &Feedly) 
+fn get_entries<T>(filter_func: &Fn(&EntryDetail) -> bool, count: usize, feedly: &Feedly<T>) 
     -> result::Result<Vec<EntryDetail>> {
   // TODO: give this a count param
   // TODO: keep continuing until you have count entries
