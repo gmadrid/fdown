@@ -1,3 +1,4 @@
+use clap;
 use hyper;
 use serde_json;
 use std::io;
@@ -8,6 +9,7 @@ use std::result;
 pub enum FdownError {
   BadConfig(String),
   BadFormat(String),
+  Clap(clap::Error),
   Hyper(hyper::Error),
   Io(io::Error),
   MissingUrl(String),
@@ -16,6 +18,12 @@ pub enum FdownError {
 }
 
 pub type Result<T> = result::Result<T,FdownError>;
+
+impl From<clap::Error> for FdownError {
+  fn from(err: clap::Error) -> FdownError {
+    FdownError::Clap(err)
+  }
+}
 
 impl From<hyper::Error> for FdownError {
   fn from(err: hyper::Error) -> FdownError {

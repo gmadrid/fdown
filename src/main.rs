@@ -133,7 +133,7 @@ fn get_entries(filter_func: &Fn(&EntryDetail) -> bool, count: usize, feedly: &Fe
 }
 
 fn real_main() -> result::Result<()> {
-  let args = args::Args::parse();
+  let args = try!(args::Args::parse());
   let config = try!(config::new(args.config_file_location()));
 
   let userid = try!(config.required_string("userid"));
@@ -165,6 +165,12 @@ fn real_main() -> result::Result<()> {
 fn main() {
   match real_main() {
     Ok(_) => (),
-    Err(err) => println!("{:?}", err)
+    Err(err) => {
+      match err {
+        // Clap gets special attention. ('-h' for example is better handled by clap::Error::exit())
+        result::FdownError::Clap(ce) => clap::Error::exit(&ce),
+        _ => println!("{:?}", err)
+      }
+    }
   }
 }

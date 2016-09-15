@@ -1,4 +1,5 @@
 use clap::{Arg, App, ArgMatches};
+use result;
 
 static CONFIG: &'static str = "config";
 static COUNT: &'static str = "count";
@@ -12,8 +13,9 @@ pub struct Args<'a> {
 }
 
 impl<'a> Args<'a> {
-  pub fn parse() -> Args<'a> {
-    Args { matches: parse_cmd_line() }
+  pub fn parse() -> result::Result<Args<'a>> {
+    let matches = try!(parse_cmd_line());
+    Ok(Args { matches: matches })
   }
 
   pub fn config_file_location(&self) -> &str {
@@ -38,8 +40,8 @@ impl<'a> Args<'a> {
   }
 }
 
-fn parse_cmd_line<'a>() -> ArgMatches<'a> {
-  App::new("fdown")
+fn parse_cmd_line<'a>() -> result::Result<ArgMatches<'a>> {
+  let builder = App::new("fdown")
       .version("0.0.1")
       .author("George Madrid (gmadrid@gmail.com)")
       .arg(Arg::with_name(CATEGORY)
@@ -62,6 +64,7 @@ fn parse_cmd_line<'a>() -> ArgMatches<'a> {
           .short("U")
           .long(UNSAVE)
           .help("Unsave the entry after saving it.")
-          .requires(CATEGORY))
-      .get_matches()
+          .requires(CATEGORY));
+
+    builder.get_matches_safe().map_err(result::FdownError::from)
 }
