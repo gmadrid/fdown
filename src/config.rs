@@ -80,6 +80,7 @@ impl HasHomedir for BaseHomedirProvider {
   }
 }
 
+
 #[cfg(test)]
 mod tests {
   use super::{HasHomedir,split_line};

@@ -77,6 +77,7 @@ fn parse_cmd_line_from<'a, I, T>(itr: I) -> result::Result<ArgMatches<'a>>
     builder.get_matches_from_safe(itr).map_err(result::FdownError::from)
 }
 
+
 #[cfg(test)]
 mod tests {
   use super::*;

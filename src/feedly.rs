@@ -16,11 +16,10 @@ pub struct FeedlyInternal<T> where T: HttpMockableClient {
 
 impl<T> FeedlyInternal<T> where T: HttpMockableClient {
   pub fn new(userid: &str, token: &str) -> FeedlyInternal<HyperClientWrapper> {
-//    FeedlyInternal { userid: userid.to_string(), token: token.to_string(), client: HyperClientWrapper{} }
     FeedlyInternal::new_with_client(userid, token, HyperClientWrapper{} )
   }
 
-  pub fn new_with_client(userid: &str, token: &str, client: T) -> FeedlyInternal<T> {
+  fn new_with_client(userid: &str, token: &str, client: T) -> FeedlyInternal<T> {
     FeedlyInternal { userid: userid.to_string(), token: token.to_string(), client: client }
   }
 
@@ -113,4 +112,24 @@ impl HttpMockableClient for HyperClientWrapper {
     }
     builder.send()
   }
+}
+
+#[cfg(test)]
+mod tests {
+
+  struct NullClient;
+//  impl HttpMockableClient for NullClient {
+
+//  }
+
+  use super::*;
+
+  const TEST_USERID : &'static str = "test_userid";
+  const TEST_TOKEN : &'static str = "test_token";
+
+  #[test]
+  fn saved_feed() {
+//    assert_equal(FeedlyInternal::saved_feed(TEST_USERID), "seasrt");
+  }
+
 }
