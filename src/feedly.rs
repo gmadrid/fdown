@@ -5,6 +5,7 @@ use hyper::header;
 use regex::Regex;
 use result;
 use serde_json;
+use std::io::Read;
 
 pub type Feedly = FeedlyInternal<HyperClientWrapper>;
 
@@ -84,16 +85,20 @@ impl<T> FeedlyInternal<T> where T: HttpMockableClient {
 }
 
 pub trait HttpMockableClient {
+  type R: Read;
+
   fn get(&self, url: &str, authHeader: Option<header::Authorization<String>>) 
-      -> hyper::error::Result<hyper::client::Response>;
+      -> hyper::error::Result<Self::R>;
   fn post(&self, url: &str, authHeader: Option<header::Authorization<String>>, body: &[u8]) 
-      -> hyper::error::Result<hyper::client::Response>;
+      -> hyper::error::Result<Self::R>;
 }
 
 pub struct HyperClientWrapper {}
 
 impl HttpMockableClient for HyperClientWrapper {
-  fn get(&self, url: &str, auth_header: Option<header::Authorization<String>>) -> hyper::error::Result<hyper::client::Response> {
+  type R = hyper::client::Response;
+
+  fn get(&self, url: &str, auth_header: Option<header::Authorization<String>>) -> hyper::error::Result<Self::R> {
     let client = Client::new();
     let mut builder = client.get(url);
     match auth_header {
@@ -103,7 +108,7 @@ impl HttpMockableClient for HyperClientWrapper {
     builder.send()
   }
 
-  fn post(&self, url: &str, auth_header: Option<header::Authorization<String>>, body: &[u8]) -> hyper::error::Result<hyper::client::Response> {
+  fn post(&self, url: &str, auth_header: Option<header::Authorization<String>>, body: &[u8]) -> hyper::error::Result<Self::R> {
     let client = Client::new();
     let mut builder = client.post(url).body(body);
     match auth_header {
