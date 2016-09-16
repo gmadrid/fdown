@@ -4,21 +4,21 @@ pub struct StreamsIdsResponse {
   pub ids: Vec<String>
 }
 
-#[derive(Debug,Deserialize)]
+#[derive(Debug,Deserialize,PartialEq)]
 pub struct EntryDetailVisual {
   pub url: Option<String>,
   #[serde(rename="contentType")]
   pub content_type: Option<String>
 }
 
-#[derive(Debug,Deserialize)]
+#[derive(Debug,Deserialize,PartialEq)]
 pub struct EntryDetailOrigin {
   #[serde(rename="streamId")]
   pub stream_id: String,
   pub title: Option<String>
 }
 
-#[derive(Debug,Deserialize)]
+#[derive(Debug,Deserialize,PartialEq)]
 pub struct EntryDetail {
   pub id: String,
   pub fingerprint: Option<String>,
