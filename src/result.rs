@@ -14,7 +14,9 @@ pub enum FdownError {
   Io(io::Error),
   MissingUrl(String),
   ParseIntError(num::ParseIntError),
-  SerdeJson(serde_json::Error)
+  SerdeJson(serde_json::Error),
+
+  TestError  // Used only for testing
 }
 
 pub type Result<T> = result::Result<T,FdownError>;

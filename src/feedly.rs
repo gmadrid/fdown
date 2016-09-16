@@ -17,10 +17,11 @@ pub struct FeedlyInternal<T> where T: HttpMockableClient {
 
 impl<T> FeedlyInternal<T> where T: HttpMockableClient {
   pub fn new(userid: &str, token: &str) -> FeedlyInternal<HyperClientWrapper> {
-    FeedlyInternal::new_with_client(userid, token, HyperClientWrapper{} )
+    FeedlyInternal::<HyperClientWrapper>::new_with_client(userid, token, HyperClientWrapper{})
   }
 
-  fn new_with_client(userid: &str, token: &str, client: T) -> FeedlyInternal<T> {
+  fn new_with_client<C>(userid: &str, token: &str, client: C) 
+      -> FeedlyInternal<C> where C: HttpMockableClient {
     FeedlyInternal { userid: userid.to_string(), token: token.to_string(), client: client }
   }
 
@@ -88,9 +89,9 @@ pub trait HttpMockableClient {
   type R: Read;
 
   fn get(&self, url: &str, authHeader: Option<header::Authorization<String>>) 
-      -> hyper::error::Result<Self::R>;
+      -> result::Result<Self::R>;
   fn post(&self, url: &str, authHeader: Option<header::Authorization<String>>, body: &[u8]) 
-      -> hyper::error::Result<Self::R>;
+      -> result::Result<Self::R>;
 }
 
 pub struct HyperClientWrapper {}
@@ -98,43 +99,112 @@ pub struct HyperClientWrapper {}
 impl HttpMockableClient for HyperClientWrapper {
   type R = hyper::client::Response;
 
-  fn get(&self, url: &str, auth_header: Option<header::Authorization<String>>) -> hyper::error::Result<Self::R> {
+  fn get(&self, url: &str, auth_header: Option<header::Authorization<String>>) -> result::Result<Self::R> {
     let client = Client::new();
     let mut builder = client.get(url);
     match auth_header {
       Some(h) => builder = builder.header(h),
       None => {}
     }
-    builder.send()
+    builder.send().map_err(|e| result::FdownError::from(e))
   }
 
-  fn post(&self, url: &str, auth_header: Option<header::Authorization<String>>, body: &[u8]) -> hyper::error::Result<Self::R> {
+  fn post(&self, url: &str, auth_header: Option<header::Authorization<String>>, body: &[u8]) -> result::Result<Self::R> {
     let client = Client::new();
     let mut builder = client.post(url).body(body);
     match auth_header {
       Some(h) => builder = builder.header(h),
       None => {}
     }
-    builder.send()
+    builder.send().map_err(|e| result::FdownError::from(e))
   }
 }
 
 #[cfg(test)]
 mod tests {
-
-  struct NullClient;
-//  impl HttpMockableClient for NullClient {
-
-//  }
-
   use super::*;
+  use hyper::header;
+  use result;
+  use std::cell::{Cell,RefCell};
+  use std::convert::From;
+  use std::io::Cursor;
 
   const TEST_USERID : &'static str = "test_userid";
   const TEST_TOKEN : &'static str = "test_token";
 
-  #[test]
-  fn saved_feed() {
-//    assert_equal(FeedlyInternal::saved_feed(TEST_USERID), "seasrt");
+  type MockFeedly<'a> = FeedlyInternal<NullClient<'a>>;
+
+  struct NullClient<'a> {
+    responses: Vec<&'a str>,
+    url: RefCell<Option<String>>,
+    has_auth: Cell<bool>
+  }
+  impl<'a> NullClient<'a> {
+    fn check_url(&self, url: &str) {
+      assert_eq!(url, self.url.borrow().as_ref().unwrap());
+    }
+    fn check_has_auth(&self, val: bool) {
+      assert_eq!(val, self.has_auth.get());
+    }
+  }
+  impl<'a> HttpMockableClient for NullClient<'a> {
+    type R = Cursor<Vec<u8>>;
+
+    fn get(&self, url: &str, auth_header: Option<header::Authorization<String>>) 
+        -> result::Result<Self::R> {
+      if self.responses.len() < 1 {
+        return Err(result::FdownError::TestError);
+      }
+      let bytes = self.responses.get(0).unwrap().as_bytes();
+      let vec : Vec<u8> = From::from(bytes);
+      let cursor = Cursor::new(vec);
+      *self.url.borrow_mut() = Some(url.to_string());
+      self.has_auth.set(auth_header.is_some());
+      Ok(cursor)
+    }
+    fn post(&self, url: &str, auth_header: Option<header::Authorization<String>>, body: &[u8]) 
+        -> result::Result<Self::R> {
+      unimplemented!();
+    }
   }
 
+  fn null_client<'a>(responses: Vec<&'a str>) -> MockFeedly<'a> {
+    Feedly::new_with_client(TEST_USERID, TEST_TOKEN, NullClient{ 
+        responses: responses, url: RefCell::new(None), has_auth: Cell::new(false)
+    })
+  }
+
+  #[test]
+  fn saved_feed() {
+    assert_eq!(null_client(vec!()).saved_feed(), "user/test_userid/tag/global.saved");
+  }
+
+  #[test]
+  fn auth_header() {
+    let header::Authorization(s) = null_client(vec!()).auth_header();
+    assert_eq!("OAuth test_token", s);
+  }
+
+  #[test]
+  fn saved_entry_ids() {
+    let resp = "{ \"ids\": [ \"id1\", \"id2\", \"id3\" ], \"continuation\": \"continuation\" }";
+    let feedly = null_client(vec!(resp));
+    let ids = feedly.saved_entry_ids(5).unwrap();
+    feedly.client.check_has_auth(true);
+    feedly.client.check_url("http://cloud.feedly.com/v3/streams/ids?streamId=user/test_userid/tag/global.saved&count=5");
+    assert_eq!(3, ids.len());
+  }
+
+  #[test]
+  fn saved_entry_ids_bad_http() {
+    let feedly = null_client(vec!());
+    feedly.saved_entry_ids(5).unwrap_err();
+  }
+
+  #[test]
+  fn saved_entry_ids_bad_json() {
+    let resp = "{ ids: [ \"id1\", \"id2\", \"id3\" ], \"continuation\": \"continuation\" }";
+    let feedly = null_client(vec!(resp));
+    feedly.saved_entry_ids(5).unwrap_err();
+  }
 }

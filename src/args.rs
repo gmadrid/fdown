@@ -63,6 +63,7 @@ fn parse_cmd_line_from<'a, I, T>(itr: I) -> result::Result<ArgMatches<'a>>
           .help("Location of the config file"))
       .arg(Arg::with_name(COUNT)
           .long(COUNT)
+          .short("c")
           .takes_value(true)
           .help("Number of entries to download"))
       .arg(Arg::with_name(SUBS)
