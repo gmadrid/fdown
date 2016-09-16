@@ -6,15 +6,22 @@ use regex::Regex;
 use result;
 use serde_json;
 
-pub struct FeedlyInternal<'f, T> where T: HttpMockableClient {
+pub type Feedly = FeedlyInternal<HyperClientWrapper>;
+
+pub struct FeedlyInternal<T> where T: HttpMockableClient {
   userid: String,
   token: String,
-  client: &'f T
+  client: T
 }
 
-impl<'f, T> FeedlyInternal<'f, T> where T: HttpMockableClient {
-  pub fn new<'a>(userid: &str, token: &str) -> FeedlyInternal<'a, T> {
-    FeedlyInternal { userid: userid.to_string(), token: token.to_string() }
+impl<T> FeedlyInternal<T> where T: HttpMockableClient {
+  pub fn new(userid: &str, token: &str) -> FeedlyInternal<HyperClientWrapper> {
+//    FeedlyInternal { userid: userid.to_string(), token: token.to_string(), client: HyperClientWrapper{} }
+    FeedlyInternal::new_with_client(userid, token, HyperClientWrapper{} )
+  }
+
+  pub fn new_with_client(userid: &str, token: &str, client: T) -> FeedlyInternal<T> {
+    FeedlyInternal { userid: userid.to_string(), token: token.to_string(), client: client }
   }
 
   fn saved_feed(&self) -> String {
@@ -27,7 +34,7 @@ impl<'f, T> FeedlyInternal<'f, T> where T: HttpMockableClient {
 
   pub fn saved_entry_ids(&self, count: usize) -> result::Result<Vec<String>> {  
     let url = format!("http://cloud.feedly.com/v3/streams/ids?streamId={}&count={}", self.saved_feed(), count);
-    let response = try!(HyperClientWrapper{}.get(self, url.as_str(), true));
+    let response = try!(self.client.get(url.as_str(), Some(self.auth_header())));
     let ids_response : StreamsIdsResponse = try!(serde_json::from_reader(response));
     Ok(ids_response.ids)
   }
@@ -40,12 +47,12 @@ impl<'f, T> FeedlyInternal<'f, T> where T: HttpMockableClient {
         type_field: "entries".to_string(), 
         entry_ids: entry_ids};
     let body : Vec<u8> = try!(serde_json::to_vec(&body_struct));
-    try!(HyperClientWrapper{}.post(self, url, true, body.as_slice()));
+    try!(self.client.post(url, Some(self.auth_header()), body.as_slice()));
     Ok(())
   }
 
   pub fn subscriptions(&self) -> result::Result<Vec<SubscriptionDetail>> {
-    let response = try!(HyperClientWrapper{}.get(self, "http://cloud.feedly.com/v3/subscriptions", true));
+    let response = try!(self.client.get("http://cloud.feedly.com/v3/subscriptions", Some(self.auth_header())));
     let detail : Vec<SubscriptionDetail> = try!(serde_json::from_reader(response));
     Ok(detail)
   }
@@ -55,7 +62,7 @@ impl<'f, T> FeedlyInternal<'f, T> where T: HttpMockableClient {
     let quoted : Vec<String> = ids.into_iter().map(|i| "\"".to_string() + &i + "\"").collect();
     let body = "[".to_string() + &quoted.join(",") + "]";
 
-    let response = try!(HyperClientWrapper{}.post(self, url, false, body.as_bytes()));
+    let response = try!(self.client.post(url, None, body.as_bytes()));
     let detail : Vec<EntryDetail> = try!(serde_json::from_reader(response));
 
     Ok(detail)
@@ -77,28 +84,32 @@ impl<'f, T> FeedlyInternal<'f, T> where T: HttpMockableClient {
   }
 }
 
-trait HttpMockableClient {
-  fn get(&self, feedly: &FeedlyInternal<Self>, url: &str, auth: bool) -> hyper::error::Result<hyper::client::Response>;
-  fn post(&self, feedly: &FeedlyInternal<Self>, url: &str, auth: bool, body: &[u8]) -> hyper::error::Result<hyper::client::Response>;
+pub trait HttpMockableClient {
+  fn get(&self, url: &str, authHeader: Option<header::Authorization<String>>) 
+      -> hyper::error::Result<hyper::client::Response>;
+  fn post(&self, url: &str, authHeader: Option<header::Authorization<String>>, body: &[u8]) 
+      -> hyper::error::Result<hyper::client::Response>;
 }
 
-struct HyperClientWrapper {}
+pub struct HyperClientWrapper {}
 
 impl HttpMockableClient for HyperClientWrapper {
-  fn get(&self, feedly: &FeedlyInternal<Self>, url: &str, auth: bool) -> hyper::error::Result<hyper::client::Response> {
+  fn get(&self, url: &str, auth_header: Option<header::Authorization<String>>) -> hyper::error::Result<hyper::client::Response> {
     let client = Client::new();
     let mut builder = client.get(url);
-    if auth {
-      builder = builder.header(feedly.auth_header());
+    match auth_header {
+      Some(h) => builder = builder.header(h),
+      None => {}
     }
     builder.send()
   }
 
-  fn post(&self, feedly: &FeedlyInternal<Self>, url: &str, auth: bool, body: &[u8]) -> hyper::error::Result<hyper::client::Response> {
+  fn post(&self, url: &str, auth_header: Option<header::Authorization<String>>, body: &[u8]) -> hyper::error::Result<hyper::client::Response> {
     let client = Client::new();
     let mut builder = client.post(url).body(body);
-    if auth {
-      builder = builder.header(feedly.auth_header());
+    match auth_header {
+      Some(h) => builder = builder.header(h),
+      None => {}
     }
     builder.send()
   }
