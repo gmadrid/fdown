@@ -13,13 +13,14 @@ use config::ConfigFile;
 use feedly::Feedly;
 use generated::EntryDetail;
 use hyper::Client;
+use result::{FdownError, Result};
 use std::ffi::OsStr;
 use std::fs::File;
 use std::io::Read;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-fn download_image(url: &String) -> result::Result<(Vec<u8>)> {
+fn download_image(url: &String) -> Result<(Vec<u8>)> {
   let client = Client::new();
   let mut response = try!(client.get(url).send());
   let mut buf: Vec<u8> = Vec::new();
@@ -27,7 +28,7 @@ fn download_image(url: &String) -> result::Result<(Vec<u8>)> {
   Ok(buf)
 }
 
-fn add_number_suffix(stem: &OsStr, num: usize) -> result::Result<String> {
+fn add_number_suffix(stem: &OsStr, num: usize) -> Result<String> {
   if let Some(stem) = stem.to_str() {
     return Ok(format!("{}_({})", stem, num));
   }
@@ -35,7 +36,7 @@ fn add_number_suffix(stem: &OsStr, num: usize) -> result::Result<String> {
                                             stem.to_string_lossy())))
 }
 
-fn file_new_path(path: PathBuf) -> result::Result<PathBuf> {
+fn file_new_path(path: PathBuf) -> Result<PathBuf> {
   let mut num = 0;
   let extension = path.extension().unwrap_or(OsStr::new(""));
   if let Some(stem) = path.file_stem() {
@@ -48,11 +49,11 @@ fn file_new_path(path: PathBuf) -> result::Result<PathBuf> {
       }
     }
   }
-  Err(result::FdownError::BadFormat(format!("unable to find file stem in url: {}",
-                                            path.to_string_lossy())))
+  Err(FdownError::BadFormat(format!("unable to find file stem in url: {}",
+                                    path.to_string_lossy())))
 }
 
-fn filepath_for_url(url: &String) -> result::Result<PathBuf> {
+fn filepath_for_url(url: &String) -> Result<PathBuf> {
   // Get the likely filename from the url.
   // TODO: check to ensure that the filename has an extension.
   if let Some(slash_index) = url.rfind('/') {
@@ -66,11 +67,11 @@ fn filepath_for_url(url: &String) -> result::Result<PathBuf> {
   Err(result::FdownError::BadFormat(format!("unable to extract filename from url: {}", url)))
 }
 
-fn unsave_entries(entries: &Vec<&EntryDetail>, feedly: &Feedly) -> result::Result<()> {
+fn unsave_entries(entries: &Vec<&EntryDetail>, feedly: &Feedly) -> Result<()> {
   feedly.unsave_entries(entries)
 }
 
-fn write_entry(entry: &EntryDetail) -> result::Result<()> {
+fn write_entry(entry: &EntryDetail) -> Result<()> {
   if let Some(url) = Feedly::extract_image_url(entry) {
     let url = Feedly::tumblr_filter(url);
     let image_bytes = try!(download_image(&url));
@@ -82,7 +83,7 @@ fn write_entry(entry: &EntryDetail) -> result::Result<()> {
   Err(result::FdownError::MissingUrl(entry.id.clone()))
 }
 
-fn list_subs(feedly: &Feedly) -> result::Result<()> {
+fn list_subs(feedly: &Feedly) -> Result<()> {
   let subs = try!(feedly.subscriptions());
   for sub in subs {
     // TODO: print something better.
@@ -101,7 +102,7 @@ fn list_subs(feedly: &Feedly) -> result::Result<()> {
 
 fn filter_for_category(category: Option<&str>,
                        feedly: &Feedly)
-    -> result::Result<Box<Fn(&EntryDetail) -> bool>> {
+    -> Result<Box<Fn(&EntryDetail) -> bool>> {
   if let Some(category) = category {
     let subs = try!(feedly.subscriptions());
     let stream_ids: Vec<String> = subs.iter()
@@ -126,7 +127,7 @@ fn filter_for_category(category: Option<&str>,
 fn get_entries(filter_func: &Fn(&EntryDetail) -> bool,
                count: usize,
                feedly: &Feedly)
-    -> result::Result<Vec<EntryDetail>> {
+    -> Result<Vec<EntryDetail>> {
   // TODO: give this a count param
   // TODO: keep continuing until you have count entries
   let ids = try!(feedly.saved_entry_ids(count));
@@ -135,7 +136,7 @@ fn get_entries(filter_func: &Fn(&EntryDetail) -> bool,
   Ok(res)
 }
 
-fn real_main() -> result::Result<()> {
+fn real_main() -> Result<()> {
   let args = try!(args::Args::parse());
   let config = try!(ConfigFile::new(args.config_file_location()));
 

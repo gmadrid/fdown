@@ -3,7 +3,7 @@ use hyper;
 use hyper::Client;
 use hyper::header;
 use regex::Regex;
-use result;
+use result::{FdownError, Result};
 use serde_json;
 use std::io::Read;
 
@@ -41,7 +41,7 @@ impl<T> FeedlyInternal<T>
     header::Authorization(format!("OAuth {}", self.token).to_owned())
   }
 
-  pub fn saved_entry_ids(&self, count: usize) -> result::Result<Vec<String>> {
+  pub fn saved_entry_ids(&self, count: usize) -> Result<Vec<String>> {
     let url = format!("http://cloud.feedly.com/v3/streams/ids?streamId={}&count={}",
                       self.saved_feed(),
                       count);
@@ -50,7 +50,7 @@ impl<T> FeedlyInternal<T>
     Ok(ids_response.ids)
   }
 
-  pub fn unsave_entries(&self, entries: &Vec<&EntryDetail>) -> result::Result<()> {
+  pub fn unsave_entries(&self, entries: &Vec<&EntryDetail>) -> Result<()> {
     let url = "http://cloud.feedly.com/v3/markers";
     let entry_ids: Vec<String> = entries.iter().map(|e| e.id.clone()).collect();
     let body_struct = MarkerRequestBody {
@@ -63,14 +63,14 @@ impl<T> FeedlyInternal<T>
     Ok(())
   }
 
-  pub fn subscriptions(&self) -> result::Result<Vec<SubscriptionDetail>> {
+  pub fn subscriptions(&self) -> Result<Vec<SubscriptionDetail>> {
     let response = try!(self.client.get("http://cloud.feedly.com/v3/subscriptions",
                                         Some(self.auth_header())));
     let detail: Vec<SubscriptionDetail> = try!(serde_json::from_reader(response));
     Ok(detail)
   }
 
-  pub fn detail_for_entries(&self, ids: Vec<String>) -> result::Result<Vec<EntryDetail>> {
+  pub fn detail_for_entries(&self, ids: Vec<String>) -> Result<Vec<EntryDetail>> {
     let url = "http://cloud.feedly.com/v3/entries/.mget";
     let quoted: Vec<String> = ids.into_iter().map(|i| "\"".to_string() + &i + "\"").collect();
     let body = "[".to_string() + &quoted.join(",") + "]";
@@ -100,15 +100,12 @@ impl<T> FeedlyInternal<T>
 pub trait HttpMockableClient {
   type R: Read;
 
-  fn get(&self,
-         url: &str,
-         authHeader: Option<header::Authorization<String>>)
-      -> result::Result<Self::R>;
+  fn get(&self, url: &str, authHeader: Option<header::Authorization<String>>) -> Result<Self::R>;
   fn post(&self,
           url: &str,
           authHeader: Option<header::Authorization<String>>,
           body: &[u8])
-      -> result::Result<Self::R>;
+      -> Result<Self::R>;
 }
 
 pub struct HyperClientWrapper {}
@@ -116,31 +113,28 @@ pub struct HyperClientWrapper {}
 impl HttpMockableClient for HyperClientWrapper {
   type R = hyper::client::Response;
 
-  fn get(&self,
-         url: &str,
-         auth_header: Option<header::Authorization<String>>)
-      -> result::Result<Self::R> {
+  fn get(&self, url: &str, auth_header: Option<header::Authorization<String>>) -> Result<Self::R> {
     let client = Client::new();
     let mut builder = client.get(url);
     match auth_header {
       Some(h) => builder = builder.header(h),
       None => {}
     }
-    builder.send().map_err(|e| result::FdownError::from(e))
+    builder.send().map_err(|e| FdownError::from(e))
   }
 
   fn post(&self,
           url: &str,
           auth_header: Option<header::Authorization<String>>,
           body: &[u8])
-      -> result::Result<Self::R> {
+      -> Result<Self::R> {
     let client = Client::new();
     let mut builder = client.post(url).body(body);
     match auth_header {
       Some(h) => builder = builder.header(h),
       None => {}
     }
-    builder.send().map_err(|e| result::FdownError::from(e))
+    builder.send().map_err(|e| FdownError::from(e))
   }
 }
 
@@ -148,7 +142,7 @@ impl HttpMockableClient for HyperClientWrapper {
 mod tests {
   use generated::*;
   use hyper::header;
-  use result;
+  use result::{FdownError, Result};
   use std::cell::{Cell, RefCell};
   use std::convert::From;
   use std::io::Cursor;
@@ -189,9 +183,9 @@ mod tests {
     fn get(&self,
            url: &str,
            auth_header: Option<header::Authorization<String>>)
-        -> result::Result<Self::R> {
+        -> Result<Self::R> {
       if self.responses.len() < 1 {
-        return Err(result::FdownError::TestError);
+        return Err(FdownError::TestError);
       }
       // Save away our arguments for verification.
       *self.url.borrow_mut() = Some(url.to_string());
@@ -207,9 +201,9 @@ mod tests {
             url: &str,
             auth_header: Option<header::Authorization<String>>,
             body: &[u8])
-        -> result::Result<Self::R> {
+        -> Result<Self::R> {
       if self.responses.len() < 1 {
-        return Err(result::FdownError::TestError);
+        return Err(FdownError::TestError);
       }
 
       // Save away our arguments for verification.
@@ -250,7 +244,7 @@ mod tests {
 
   #[test]
   fn saved_entry_ids() {
-    let resp = "{ \"ids\": [ \"id1\", \"id2\", \"id3\" ], 
+    let resp = "{ \"ids\": [ \"id1\", \"id2\", \"id3\" ],
                   \"continuation\": \"continuation\" }";
     let feedly = null_client(vec![resp]);
     let ids = feedly.saved_entry_ids(5).unwrap();

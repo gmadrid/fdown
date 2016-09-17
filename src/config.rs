@@ -1,4 +1,4 @@
-use result::{self, FdownError};
+use result::{FdownError, Result};
 use std::collections::hash_map::HashMap;
 use std::env::home_dir;
 use std::fs::File;
@@ -11,14 +11,14 @@ pub struct ConfigFile {
 }
 
 impl ConfigFile {
-  pub fn new(filename: &str) -> result::Result<ConfigFile> {
+  pub fn new(filename: &str) -> Result<ConfigFile> {
     let f = try!(File::open(twiddle(filename, BaseHomedirProvider {})));
     let reader = BufReader::new(f);
 
     ConfigFile::new_with_bufread(reader)
   }
 
-  fn new_with_bufread<T>(reader: T) -> result::Result<ConfigFile>
+  fn new_with_bufread<T>(reader: T) -> Result<ConfigFile>
     where T: BufRead {
     let mut hash = HashMap::new();
 
@@ -35,7 +35,7 @@ impl ConfigFile {
     Ok(ConfigFile { values: hash })
   }
 
-  pub fn required_string(&self, k: &str) -> result::Result<&String> {
+  pub fn required_string(&self, k: &str) -> Result<&String> {
     self.values
       .get(k)
       .ok_or(FdownError::BadConfig(format!("Required config value, {}, missing", k)))
@@ -60,7 +60,7 @@ fn twiddle<T>(filename: &str, home_dir_provider: T) -> PathBuf
   file_path.to_path_buf()
 }
 
-fn split_line<'a>(line: &'a str) -> result::Result<(&'a str, &'a str)> {
+fn split_line<'a>(line: &'a str) -> Result<(&'a str, &'a str)> {
   if let Some(pos) = line.find('=') {
     let key = line[..pos].trim();
     let value = line[pos + 1..].trim();

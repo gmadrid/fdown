@@ -1,5 +1,5 @@
 use clap::{App, Arg, ArgMatches};
-use result;
+use result::{FdownError, Result};
 use std::env;
 use std::ffi::OsString;
 
@@ -15,11 +15,11 @@ pub struct Args<'a> {
 }
 
 impl<'a> Args<'a> {
-  pub fn parse() -> result::Result<Args<'a>> {
+  pub fn parse() -> Result<Args<'a>> {
     Args::parse_from(env::args_os())
   }
 
-  fn parse_from<I, T>(itr: I) -> result::Result<Args<'a>>
+  fn parse_from<I, T>(itr: I) -> Result<Args<'a>>
     where I: IntoIterator<Item = T>,
           T: Into<OsString> {
     let matches = try!(parse_cmd_line_from(itr));
@@ -48,7 +48,7 @@ impl<'a> Args<'a> {
   }
 }
 
-fn parse_cmd_line_from<'a, I, T>(itr: I) -> result::Result<ArgMatches<'a>>
+fn parse_cmd_line_from<'a, I, T>(itr: I) -> Result<ArgMatches<'a>>
   where I: IntoIterator<Item = T>,
         T: Into<OsString> {
   let builder = App::new("fdown")
@@ -77,7 +77,7 @@ fn parse_cmd_line_from<'a, I, T>(itr: I) -> result::Result<ArgMatches<'a>>
       .help("Unsave the entry after saving it.")
       .requires(CATEGORY));
 
-  builder.get_matches_from_safe(itr).map_err(result::FdownError::from)
+  builder.get_matches_from_safe(itr).map_err(FdownError::from)
 }
 
 
