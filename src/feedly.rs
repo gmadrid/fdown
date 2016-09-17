@@ -1,4 +1,4 @@
-use generated::{EntryDetail,MarkerRequestBody,StreamsIdsResponse,SubscriptionDetail};
+use generated::{EntryDetail, MarkerRequestBody, StreamsIdsResponse, SubscriptionDetail};
 use hyper;
 use hyper::Client;
 use hyper::header;
@@ -9,20 +9,28 @@ use std::io::Read;
 
 pub type Feedly = FeedlyInternal<HyperClientWrapper>;
 
-pub struct FeedlyInternal<T> where T: HttpMockableClient {
+pub struct FeedlyInternal<T>
+  where T: HttpMockableClient
+{
   userid: String,
   token: String,
-  client: T
+  client: T,
 }
 
-impl<T> FeedlyInternal<T> where T: HttpMockableClient {
+impl<T> FeedlyInternal<T>
+  where T: HttpMockableClient
+{
   pub fn new(userid: &str, token: &str) -> FeedlyInternal<HyperClientWrapper> {
-    FeedlyInternal::<HyperClientWrapper>::new_with_client(userid, token, HyperClientWrapper{})
+    FeedlyInternal::<HyperClientWrapper>::new_with_client(userid, token, HyperClientWrapper {})
   }
 
-  fn new_with_client<C>(userid: &str, token: &str, client: C) 
-      -> FeedlyInternal<C> where C: HttpMockableClient {
-    FeedlyInternal { userid: userid.to_string(), token: token.to_string(), client: client }
+  fn new_with_client<C>(userid: &str, token: &str, client: C) -> FeedlyInternal<C>
+    where C: HttpMockableClient {
+    FeedlyInternal {
+      userid: userid.to_string(),
+      token: token.to_string(),
+      client: client,
+    }
   }
 
   fn saved_feed(&self) -> String {
@@ -33,38 +41,42 @@ impl<T> FeedlyInternal<T> where T: HttpMockableClient {
     header::Authorization(format!("OAuth {}", self.token).to_owned())
   }
 
-  pub fn saved_entry_ids(&self, count: usize) -> result::Result<Vec<String>> {  
-    let url = format!("http://cloud.feedly.com/v3/streams/ids?streamId={}&count={}", self.saved_feed(), count);
+  pub fn saved_entry_ids(&self, count: usize) -> result::Result<Vec<String>> {
+    let url = format!("http://cloud.feedly.com/v3/streams/ids?streamId={}&count={}",
+                      self.saved_feed(),
+                      count);
     let response = try!(self.client.get(url.as_str(), Some(self.auth_header())));
-    let ids_response : StreamsIdsResponse = try!(serde_json::from_reader(response));
+    let ids_response: StreamsIdsResponse = try!(serde_json::from_reader(response));
     Ok(ids_response.ids)
   }
 
   pub fn unsave_entries(&self, entries: &Vec<&EntryDetail>) -> result::Result<()> {
     let url = "http://cloud.feedly.com/v3/markers";
-    let entry_ids : Vec<String> = entries.iter().map(|e| e.id.clone()).collect();
-    let body_struct = MarkerRequestBody{ 
-        action: "markAsUnsaved".to_string(), 
-        type_field: "entries".to_string(), 
-        entry_ids: entry_ids};
-    let body : Vec<u8> = try!(serde_json::to_vec(&body_struct));
+    let entry_ids: Vec<String> = entries.iter().map(|e| e.id.clone()).collect();
+    let body_struct = MarkerRequestBody {
+      action: "markAsUnsaved".to_string(),
+      type_field: "entries".to_string(),
+      entry_ids: entry_ids,
+    };
+    let body: Vec<u8> = try!(serde_json::to_vec(&body_struct));
     try!(self.client.post(url, Some(self.auth_header()), body.as_slice()));
     Ok(())
   }
 
   pub fn subscriptions(&self) -> result::Result<Vec<SubscriptionDetail>> {
-    let response = try!(self.client.get("http://cloud.feedly.com/v3/subscriptions", Some(self.auth_header())));
-    let detail : Vec<SubscriptionDetail> = try!(serde_json::from_reader(response));
+    let response = try!(self.client.get("http://cloud.feedly.com/v3/subscriptions",
+                                        Some(self.auth_header())));
+    let detail: Vec<SubscriptionDetail> = try!(serde_json::from_reader(response));
     Ok(detail)
   }
 
   pub fn detail_for_entries(&self, ids: Vec<String>) -> result::Result<Vec<EntryDetail>> {
     let url = "http://cloud.feedly.com/v3/entries/.mget";
-    let quoted : Vec<String> = ids.into_iter().map(|i| "\"".to_string() + &i + "\"").collect();
+    let quoted: Vec<String> = ids.into_iter().map(|i| "\"".to_string() + &i + "\"").collect();
     let body = "[".to_string() + &quoted.join(",") + "]";
 
     let response = try!(self.client.post(url, None, body.as_bytes()));
-    let detail : Vec<EntryDetail> = try!(serde_json::from_reader(response));
+    let detail: Vec<EntryDetail> = try!(serde_json::from_reader(response));
 
     Ok(detail)
   }
@@ -88,9 +100,14 @@ impl<T> FeedlyInternal<T> where T: HttpMockableClient {
 pub trait HttpMockableClient {
   type R: Read;
 
-  fn get(&self, url: &str, authHeader: Option<header::Authorization<String>>) 
+  fn get(&self,
+         url: &str,
+         authHeader: Option<header::Authorization<String>>)
       -> result::Result<Self::R>;
-  fn post(&self, url: &str, authHeader: Option<header::Authorization<String>>, body: &[u8]) 
+  fn post(&self,
+          url: &str,
+          authHeader: Option<header::Authorization<String>>,
+          body: &[u8])
       -> result::Result<Self::R>;
 }
 
@@ -99,7 +116,10 @@ pub struct HyperClientWrapper {}
 impl HttpMockableClient for HyperClientWrapper {
   type R = hyper::client::Response;
 
-  fn get(&self, url: &str, auth_header: Option<header::Authorization<String>>) -> result::Result<Self::R> {
+  fn get(&self,
+         url: &str,
+         auth_header: Option<header::Authorization<String>>)
+      -> result::Result<Self::R> {
     let client = Client::new();
     let mut builder = client.get(url);
     match auth_header {
@@ -109,7 +129,11 @@ impl HttpMockableClient for HyperClientWrapper {
     builder.send().map_err(|e| result::FdownError::from(e))
   }
 
-  fn post(&self, url: &str, auth_header: Option<header::Authorization<String>>, body: &[u8]) -> result::Result<Self::R> {
+  fn post(&self,
+          url: &str,
+          auth_header: Option<header::Authorization<String>>,
+          body: &[u8])
+      -> result::Result<Self::R> {
     let client = Client::new();
     let mut builder = client.post(url).body(body);
     match auth_header {
@@ -122,16 +146,16 @@ impl HttpMockableClient for HyperClientWrapper {
 
 #[cfg(test)]
 mod tests {
-  use super::*;
   use generated::*;
   use hyper::header;
   use result;
-  use std::cell::{Cell,RefCell};
+  use std::cell::{Cell, RefCell};
   use std::convert::From;
   use std::io::Cursor;
+  use super::*;
 
-  const TEST_USERID : &'static str = "test_userid";
-  const TEST_TOKEN : &'static str = "test_token";
+  const TEST_USERID: &'static str = "test_userid";
+  const TEST_TOKEN: &'static str = "test_token";
 
   type MockFeedly<'a> = FeedlyInternal<NullClient<'a>>;
 
@@ -139,7 +163,7 @@ mod tests {
     responses: Vec<&'a str>,
     url: RefCell<Option<String>>,
     has_auth: Cell<bool>,
-    body: RefCell<Option<Vec<u8>>>
+    body: RefCell<Option<Vec<u8>>>,
   }
   impl<'a> NullClient<'a> {
     fn check_url(&self, url: &str) {
@@ -162,7 +186,9 @@ mod tests {
     type R = Cursor<Vec<u8>>;
 
     // TODO: combine get/set code into single thing.
-    fn get(&self, url: &str, auth_header: Option<header::Authorization<String>>) 
+    fn get(&self,
+           url: &str,
+           auth_header: Option<header::Authorization<String>>)
         -> result::Result<Self::R> {
       if self.responses.len() < 1 {
         return Err(result::FdownError::TestError);
@@ -172,12 +198,15 @@ mod tests {
       self.has_auth.set(auth_header.is_some());
 
       let bytes = self.responses.get(0).unwrap().as_bytes();
-      let vec : Vec<u8> = From::from(bytes);
+      let vec: Vec<u8> = From::from(bytes);
       let cursor = Cursor::new(vec);
 
       Ok(cursor)
     }
-    fn post(&self, url: &str, auth_header: Option<header::Authorization<String>>, body: &[u8]) 
+    fn post(&self,
+            url: &str,
+            auth_header: Option<header::Authorization<String>>,
+            body: &[u8])
         -> result::Result<Self::R> {
       if self.responses.len() < 1 {
         return Err(result::FdownError::TestError);
@@ -189,7 +218,7 @@ mod tests {
       *self.body.borrow_mut() = Some(Vec::from(body));
 
       let bytes = self.responses.get(0).unwrap().as_bytes();
-      let vec : Vec<u8> = From::from(bytes);
+      let vec: Vec<u8> = From::from(bytes);
       let cursor = Cursor::new(vec);
 
       Ok(cursor)
@@ -197,22 +226,25 @@ mod tests {
   }
 
   fn null_client<'a>(responses: Vec<&'a str>) -> MockFeedly<'a> {
-    Feedly::new_with_client(TEST_USERID, TEST_TOKEN, NullClient{ 
-        responses: responses, 
-        url: RefCell::new(None), 
-        has_auth: Cell::new(false), 
-        body: RefCell::new(None)
-    })
+    Feedly::new_with_client(TEST_USERID,
+                            TEST_TOKEN,
+                            NullClient {
+                              responses: responses,
+                              url: RefCell::new(None),
+                              has_auth: Cell::new(false),
+                              body: RefCell::new(None),
+                            })
   }
 
   #[test]
   fn saved_feed() {
-    assert_eq!(null_client(vec!()).saved_feed(), "user/test_userid/tag/global.saved");
+    assert_eq!(null_client(vec![]).saved_feed(),
+               "user/test_userid/tag/global.saved");
   }
 
   #[test]
   fn auth_header() {
-    let header::Authorization(s) = null_client(vec!()).auth_header();
+    let header::Authorization(s) = null_client(vec![]).auth_header();
     assert_eq!("OAuth test_token", s);
   }
 
@@ -220,31 +252,33 @@ mod tests {
   fn saved_entry_ids() {
     let resp = "{ \"ids\": [ \"id1\", \"id2\", \"id3\" ], 
                   \"continuation\": \"continuation\" }";
-    let feedly = null_client(vec!(resp));
+    let feedly = null_client(vec![resp]);
     let ids = feedly.saved_entry_ids(5).unwrap();
     feedly.client.check_has_auth(true);
-    feedly.client.check_url("http://cloud.feedly.com/v3/streams/ids?streamId=user/test_userid/tag/global.saved&count=5");
+    feedly.client
+      .check_url("http://cloud.feedly.com/v3/streams/ids?streamId=user/test_userid/tag/global.\
+                  saved&count=5");
     feedly.client.check_has_no_body();
-    assert_eq!(vec!("id1", "id2", "id3"), ids);
+    assert_eq!(vec!["id1", "id2", "id3"], ids);
   }
 
   #[test]
   fn saved_entry_ids_bad_http() {
-    let feedly = null_client(vec!());
+    let feedly = null_client(vec![]);
     feedly.saved_entry_ids(5).unwrap_err();
   }
 
   #[test]
   fn saved_entry_ids_bad_json() {
     let resp = "{ ids: [ \"id1\", \"id2\", \"id3\" ], \"continuation\": \"continuation\" }";
-    let feedly = null_client(vec!(resp));
+    let feedly = null_client(vec![resp]);
     feedly.saved_entry_ids(5).unwrap_err();
   }
 
   #[test]
   fn entry_detail_empty() {
-    let feedly = null_client(vec!("[]"));
-    let entries = feedly.detail_for_entries(vec!()).unwrap();
+    let feedly = null_client(vec!["[]"]);
+    let entries = feedly.detail_for_entries(vec![]).unwrap();
     feedly.client.check_has_auth(false);
     feedly.client.check_url("http://cloud.feedly.com/v3/entries/.mget");
     feedly.client.check_body("[]");
@@ -253,31 +287,47 @@ mod tests {
 
   #[test]
   fn entry_detail() {
-    let feedly = null_client(vec!("[{ \"id\": \"id1\" }, { \"id\": \"id2\" }, { \"id\": \"id3\" }]"));
-    let entries = feedly.detail_for_entries(vec!("id1".to_string(), "id2".to_string(), "id3".to_string())).unwrap();
+    let feedly = null_client(vec!["[{ \"id\": \"id1\" }, { \"id\": \"id2\" }, { \"id\": \"id3\" \
+                                   }]"]);
+    let entries =
+      feedly.detail_for_entries(vec!["id1".to_string(), "id2".to_string(), "id3".to_string()])
+        .unwrap();
     feedly.client.check_url("http://cloud.feedly.com/v3/entries/.mget");
     feedly.client.check_has_auth(false);
     feedly.client.check_body("[\"id1\",\"id2\",\"id3\"]");
 
-    assert_eq!(3, entries.len()); 
-    let foo : Vec<EntryDetail> = vec!(
-      EntryDetail{ id: "id1".to_string(), fingerprint: None, origin: None, visual: None },
-      EntryDetail{ id: "id2".to_string(), fingerprint: None, origin: None, visual: None },
-      EntryDetail{ id: "id3".to_string(), fingerprint: None, origin: None, visual: None }
-    );  
-    assert_eq!(foo, entries); 
+    assert_eq!(3, entries.len());
+    let foo: Vec<EntryDetail> = vec![EntryDetail {
+                                       id: "id1".to_string(),
+                                       fingerprint: None,
+                                       origin: None,
+                                       visual: None,
+                                     },
+                                     EntryDetail {
+                                       id: "id2".to_string(),
+                                       fingerprint: None,
+                                       origin: None,
+                                       visual: None,
+                                     },
+                                     EntryDetail {
+                                       id: "id3".to_string(),
+                                       fingerprint: None,
+                                       origin: None,
+                                       visual: None,
+                                     }];
+    assert_eq!(foo, entries);
   }
 
   #[test]
   fn entry_detail_bad_http() {
-    let feedly = null_client(vec!());
-    feedly.detail_for_entries(vec!("id1".to_string())).unwrap_err();
+    let feedly = null_client(vec![]);
+    feedly.detail_for_entries(vec!["id1".to_string()]).unwrap_err();
   }
 
   #[test]
   fn entry_detail_bad_json() {
     let resp = "this is a bad json string";
-    let feedly = null_client(vec!(resp));
-    feedly.detail_for_entries(vec!("id1".to_string())).unwrap_err();
+    let feedly = null_client(vec![resp]);
+    feedly.detail_for_entries(vec!["id1".to_string()]).unwrap_err();
   }
 }

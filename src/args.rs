@@ -1,4 +1,4 @@
-use clap::{Arg, App, ArgMatches};
+use clap::{App, Arg, ArgMatches};
 use result;
 use std::env;
 use std::ffi::OsString;
@@ -11,7 +11,7 @@ static SUBS: &'static str = "subs";
 static UNSAVE: &'static str = "unsave";
 
 pub struct Args<'a> {
-  matches: ArgMatches<'a>
+  matches: ArgMatches<'a>,
 }
 
 impl<'a> Args<'a> {
@@ -20,7 +20,8 @@ impl<'a> Args<'a> {
   }
 
   fn parse_from<I, T>(itr: I) -> result::Result<Args<'a>>
-      where I: IntoIterator<Item=T>, T: Into<OsString> {
+    where I: IntoIterator<Item = T>,
+          T: Into<OsString> {
     let matches = try!(parse_cmd_line_from(itr));
     Ok(Args { matches: matches })
   }
@@ -48,34 +49,35 @@ impl<'a> Args<'a> {
 }
 
 fn parse_cmd_line_from<'a, I, T>(itr: I) -> result::Result<ArgMatches<'a>>
-    where I: IntoIterator<Item=T>, T: Into<OsString> {
+  where I: IntoIterator<Item = T>,
+        T: Into<OsString> {
   let builder = App::new("fdown")
-      .version("0.0.1")
-      .author("George Madrid (gmadrid@gmail.com)")
-      .arg(Arg::with_name(CATEGORY)
-          .short("C")
-          .long(CATEGORY)
-          .help("Only process entries in this category")
-          .takes_value(true))
-      .arg(Arg::with_name(CONFIG)
-          .long(CONFIG)
-          .takes_value(true)
-          .help("Location of the config file"))
-      .arg(Arg::with_name(COUNT)
-          .long(COUNT)
-          .short("c")
-          .takes_value(true)
-          .help("Number of entries to download"))
-      .arg(Arg::with_name(SUBS)
-          .long(SUBS)
-          .help("List the subscriptions"))
-      .arg(Arg::with_name(UNSAVE)
-          .short("U")
-          .long(UNSAVE)
-          .help("Unsave the entry after saving it.")
-          .requires(CATEGORY));
+    .version("0.0.1")
+    .author("George Madrid (gmadrid@gmail.com)")
+    .arg(Arg::with_name(CATEGORY)
+      .short("C")
+      .long(CATEGORY)
+      .help("Only process entries in this category")
+      .takes_value(true))
+    .arg(Arg::with_name(CONFIG)
+      .long(CONFIG)
+      .takes_value(true)
+      .help("Location of the config file"))
+    .arg(Arg::with_name(COUNT)
+      .long(COUNT)
+      .short("c")
+      .takes_value(true)
+      .help("Number of entries to download"))
+    .arg(Arg::with_name(SUBS)
+      .long(SUBS)
+      .help("List the subscriptions"))
+    .arg(Arg::with_name(UNSAVE)
+      .short("U")
+      .long(UNSAVE)
+      .help("Unsave the entry after saving it.")
+      .requires(CATEGORY));
 
-    builder.get_matches_from_safe(itr).map_err(result::FdownError::from)
+  builder.get_matches_from_safe(itr).map_err(result::FdownError::from)
 }
 
 
@@ -83,9 +85,9 @@ fn parse_cmd_line_from<'a, I, T>(itr: I) -> result::Result<ArgMatches<'a>>
 mod tests {
   use super::*;
 
-  fn args_from<'a, 'b, 'c>(lst: &'a[&'b str]) -> Args<'c> {
+  fn args_from<'a, 'b, 'c>(lst: &'a [&'b str]) -> Args<'c> {
     Args::parse_from(lst.iter()).unwrap()
-  } 
+  }
 
   #[test]
   fn count() {
@@ -146,7 +148,7 @@ mod tests {
   #[should_panic]
   fn unsave_no_cat() {
     args_from(&["foo", "-U"]);
-  }  
+  }
 
   #[test]
   fn config_file_location() {
@@ -155,7 +157,7 @@ mod tests {
 
     // Test default
     let args = Args::parse_from(["foo"].iter()).unwrap();
-    assert_eq!("~/.fdown", args.config_file_location());    
+    assert_eq!("~/.fdown", args.config_file_location());
   }
 
   #[should_panic]

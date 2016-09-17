@@ -10,28 +10,29 @@ mod generated;
 mod result;
 
 use config::ConfigFile;
-use feedly::{Feedly};
+use feedly::Feedly;
 use generated::EntryDetail;
 use hyper::Client;
 use std::ffi::OsStr;
 use std::fs::File;
 use std::io::Read;
 use std::io::Write;
-use std::path::{Path,PathBuf};
+use std::path::{Path, PathBuf};
 
 fn download_image(url: &String) -> result::Result<(Vec<u8>)> {
   let client = Client::new();
   let mut response = try!(client.get(url).send());
-  let mut buf : Vec<u8> = Vec::new();
+  let mut buf: Vec<u8> = Vec::new();
   try!(response.read_to_end(&mut buf));
   Ok(buf)
 }
 
 fn add_number_suffix(stem: &OsStr, num: usize) -> result::Result<String> {
   if let Some(stem) = stem.to_str() {
-    return Ok(format!("{}_({})", stem, num))
+    return Ok(format!("{}_({})", stem, num));
   }
-  Err(result::FdownError::BadFormat(format!("cannot append number to stem: {}", stem.to_string_lossy())))
+  Err(result::FdownError::BadFormat(format!("cannot append number to stem: {}",
+                                            stem.to_string_lossy())))
 }
 
 fn file_new_path(path: PathBuf) -> result::Result<PathBuf> {
@@ -47,7 +48,8 @@ fn file_new_path(path: PathBuf) -> result::Result<PathBuf> {
       }
     }
   }
-  Err(result::FdownError::BadFormat(format!("unable to find file stem in url: {}", path.to_string_lossy())))
+  Err(result::FdownError::BadFormat(format!("unable to find file stem in url: {}",
+                                            path.to_string_lossy())))
 }
 
 fn filepath_for_url(url: &String) -> result::Result<PathBuf> {
@@ -61,7 +63,7 @@ fn filepath_for_url(url: &String) -> result::Result<PathBuf> {
     }
     return Ok(path);
   }
-  Err(result::FdownError::BadFormat(format!("unable to extract filename from url: {}", url)))  
+  Err(result::FdownError::BadFormat(format!("unable to extract filename from url: {}", url)))
 }
 
 fn unsave_entries(entries: &Vec<&EntryDetail>, feedly: &Feedly) -> result::Result<()> {
@@ -91,30 +93,28 @@ fn list_subs(feedly: &Feedly) -> result::Result<()> {
         let cat_title = cat.label.as_ref().unwrap_or(&cat.id);
         println!("{}: {}", cat_title, title);
       }
-      None => println!("{}", title)
+      None => println!("{}", title),
     }
   }
-  Ok(())  
+  Ok(())
 }
 
-fn filter_for_category(category: Option<&str>, feedly: &Feedly) 
+fn filter_for_category(category: Option<&str>,
+                       feedly: &Feedly)
     -> result::Result<Box<Fn(&EntryDetail) -> bool>> {
   if let Some(category) = category {
     let subs = try!(feedly.subscriptions());
-    let stream_ids : Vec<String> = subs.iter().filter(|sub| {
-      let categories = &sub.categories;
-      categories.iter().any(|cat| cat.label.as_ref().map_or(false, |label| label == category))
-    })
-    .map(|sub| {
-      sub.id.to_string()
-    })
-    .collect();
+    let stream_ids: Vec<String> = subs.iter()
+      .filter(|sub| {
+        let categories = &sub.categories;
+        categories.iter().any(|cat| cat.label.as_ref().map_or(false, |label| label == category))
+      })
+      .map(|sub| sub.id.to_string())
+      .collect();
 
-    let closure = move |entry : &EntryDetail| -> bool {
+    let closure = move |entry: &EntryDetail| -> bool {
       if let Some(ref origin) = entry.origin {
-        return stream_ids.iter().any(|stream_id| {
-          stream_id == &origin.stream_id
-        });
+        return stream_ids.iter().any(|stream_id| stream_id == &origin.stream_id);
       }
       false
     };
@@ -123,13 +123,15 @@ fn filter_for_category(category: Option<&str>, feedly: &Feedly)
   Ok(Box::new(|_| true))
 }
 
-fn get_entries(filter_func: &Fn(&EntryDetail) -> bool, count: usize, feedly: &Feedly) 
+fn get_entries(filter_func: &Fn(&EntryDetail) -> bool,
+               count: usize,
+               feedly: &Feedly)
     -> result::Result<Vec<EntryDetail>> {
   // TODO: give this a count param
   // TODO: keep continuing until you have count entries
   let ids = try!(feedly.saved_entry_ids(count));
   let entries = try!(feedly.detail_for_entries(ids));
-  let res : Vec<EntryDetail> = entries.into_iter().filter(filter_func).collect();
+  let res: Vec<EntryDetail> = entries.into_iter().filter(filter_func).collect();
   Ok(res)
 }
 
@@ -148,12 +150,12 @@ fn real_main() -> result::Result<()> {
 
   let filter = try!(filter_for_category(args.filter_category(), &feedly));
   let entries = try!(get_entries(filter.as_ref(), args.number_of_entries(), &feedly));
-  let mut successful_entries : Vec<&EntryDetail> = Vec::with_capacity(entries.len());
+  let mut successful_entries: Vec<&EntryDetail> = Vec::with_capacity(entries.len());
   for (i, entry) in entries.iter().enumerate() {
     println!("Processing entry {}.", i);
     match write_entry(entry) {
       Ok(_) => successful_entries.push(entry),
-      Err(e) => return Err(e)
+      Err(e) => return Err(e),
     }
   }
   if args.should_unsave() {
@@ -170,7 +172,7 @@ fn main() {
       match err {
         // Clap gets special attention. ('-h' for example is better handled by clap::Error::exit())
         result::FdownError::Clap(ce) => clap::Error::exit(&ce),
-        _ => println!("{:?}", err)
+        _ => println!("{:?}", err),
       }
     }
   }

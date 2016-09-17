@@ -16,10 +16,11 @@ pub enum FdownError {
   ParseIntError(num::ParseIntError),
   SerdeJson(serde_json::Error),
 
-  TestError  // Used only for testing
+  #[test]
+  TestError, // Used only for testing
 }
 
-pub type Result<T> = result::Result<T,FdownError>;
+pub type Result<T> = result::Result<T, FdownError>;
 
 impl From<clap::Error> for FdownError {
   fn from(err: clap::Error) -> FdownError {

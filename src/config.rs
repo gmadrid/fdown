@@ -1,25 +1,25 @@
+use result::{self, FdownError};
 use std::collections::hash_map::HashMap;
 use std::env::home_dir;
-use std::fs::{File};
-use std::io::{BufRead,BufReader};
-use std::path::{Component,Path,PathBuf};
-use result::{self,FdownError};
+use std::fs::File;
+use std::io::{BufRead, BufReader};
+use std::path::{Component, Path, PathBuf};
 
 #[derive(Debug)]
 pub struct ConfigFile {
-  values: HashMap<String,String>
+  values: HashMap<String, String>,
 }
 
 impl ConfigFile {
   pub fn new(filename: &str) -> result::Result<ConfigFile> {
-    let f = try!(File::open(twiddle(filename,  BaseHomedirProvider{})));
+    let f = try!(File::open(twiddle(filename, BaseHomedirProvider {})));
     let reader = BufReader::new(f);
 
     ConfigFile::new_with_bufread(reader)
   }
 
-  fn new_with_bufread<T>(reader: T) 
-      -> result::Result<ConfigFile> where T: BufRead {
+  fn new_with_bufread<T>(reader: T) -> result::Result<ConfigFile>
+    where T: BufRead {
     let mut hash = HashMap::new();
 
     for line in reader.lines() {
@@ -32,16 +32,18 @@ impl ConfigFile {
         hash.insert(k.to_string(), v.to_string());
       }
     }
-    Ok(ConfigFile{values: hash})
+    Ok(ConfigFile { values: hash })
   }
 
   pub fn required_string(&self, k: &str) -> result::Result<&String> {
-    self.values.get(k).ok_or(
-        FdownError::BadConfig(format!("Required config value, {}, missing", k)))
+    self.values
+      .get(k)
+      .ok_or(FdownError::BadConfig(format!("Required config value, {}, missing", k)))
   }
 }
 
-fn twiddle<T>(filename: &str, home_dir_provider: T) -> PathBuf where T: HasHomedir {
+fn twiddle<T>(filename: &str, home_dir_provider: T) -> PathBuf
+  where T: HasHomedir {
   let file_path = Path::new(filename);
   let mut components = file_path.components();
   if let Some(first) = components.nth(0) {
@@ -61,8 +63,8 @@ fn twiddle<T>(filename: &str, home_dir_provider: T) -> PathBuf where T: HasHomed
 fn split_line<'a>(line: &'a str) -> result::Result<(&'a str, &'a str)> {
   if let Some(pos) = line.find('=') {
     let key = line[..pos].trim();
-    let value = line[pos+1..].trim();
-    return Ok((key, value))
+    let value = line[pos + 1..].trim();
+    return Ok((key, value));
   }
 
   Err(FdownError::BadConfig(format!("Missing '=' in config file: \"{}\"", line)))
@@ -83,13 +85,12 @@ impl HasHomedir for BaseHomedirProvider {
 
 #[cfg(test)]
 mod tests {
-  use super::{HasHomedir,split_line};
   use std::path::PathBuf;
+  use super::{HasHomedir, split_line};
 
   #[test]
   fn simple_reader() {
-    let reader = "foo=bar\n\
-                  quux=bam".as_bytes();
+    let reader = "foo=bar\nquux=bam".as_bytes();
     let config = super::ConfigFile::new_with_bufread(reader).unwrap();
     assert_eq!("bar", config.required_string("foo").unwrap());
     assert_eq!("bam", config.required_string("quux").unwrap());
@@ -97,10 +98,7 @@ mod tests {
 
   #[test]
   fn comments_blank_lines() {
-    let reader = "\n\
-                  quux=bam\n\
-                  # a comment\n\
-                  foo=bar\n".as_bytes();
+    let reader = "\nquux=bam\n# a comment\nfoo=bar\n".as_bytes();
     let config = super::ConfigFile::new_with_bufread(reader).unwrap();
     assert_eq!("bar", config.required_string("foo").unwrap());
     assert_eq!("bam", config.required_string("quux").unwrap());
@@ -124,14 +122,14 @@ mod tests {
     split_line("foo bar").unwrap();
   }
 
-  struct TestHomeDirProvider{}
+  struct TestHomeDirProvider {}
   impl HasHomedir for TestHomeDirProvider {
     fn home_dir(&self) -> PathBuf {
-      return PathBuf::from("/foo/bar/home".to_string())
+      return PathBuf::from("/foo/bar/home".to_string());
     }
   }
 
-  struct FailingHomeDirProvider{}
+  struct FailingHomeDirProvider {}
   impl HasHomedir for FailingHomeDirProvider {
     fn home_dir(&self) -> PathBuf {
       println!("{:?}", "QUUX");
@@ -143,20 +141,24 @@ mod tests {
 
   #[test]
   fn twiddle() {
-    assert_eq!(PathBuf::from("/quux"), super::twiddle("/quux", TestHomeDirProvider{}));
-    assert_eq!(PathBuf::from("/foo/bar/home/quux"), super::twiddle("~/quux", TestHomeDirProvider{}));
-    assert_eq!(PathBuf::from("~quux"), super::twiddle("~quux", TestHomeDirProvider{}));
-    assert_eq!(PathBuf::from("/foo/~/bar"), super::twiddle("/foo/~/bar", TestHomeDirProvider{}));
+    assert_eq!(PathBuf::from("/quux"),
+               super::twiddle("/quux", TestHomeDirProvider {}));
+    assert_eq!(PathBuf::from("/foo/bar/home/quux"),
+               super::twiddle("~/quux", TestHomeDirProvider {}));
+    assert_eq!(PathBuf::from("~quux"),
+               super::twiddle("~quux", TestHomeDirProvider {}));
+    assert_eq!(PathBuf::from("/foo/~/bar"),
+               super::twiddle("/foo/~/bar", TestHomeDirProvider {}));
   }
 
   #[test]
   #[should_panic]
   fn twiddle_no_home_dir() {
-    super::twiddle("~/quux", FailingHomeDirProvider{});
+    super::twiddle("~/quux", FailingHomeDirProvider {});
   }
 
   #[test]
   fn twiddle_no_home_dir_with_absolute_path() {
-    super::twiddle("/quux", FailingHomeDirProvider{});
+    super::twiddle("/quux", FailingHomeDirProvider {});
   }
 }
