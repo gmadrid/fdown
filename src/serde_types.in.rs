@@ -1,6 +1,6 @@
 #[derive(Debug,Deserialize)]
 pub struct StreamsIdsResponse {
-  continuation: String,
+  continuation: Option<String>,
   pub ids: Vec<String>,
 }
 

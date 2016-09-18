@@ -23,6 +23,9 @@ use std::io::Read;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
+// TODO: allow selecting feeds, not just categories.
+// TODO: use hyper.url
+
 fn download_image(url: &String) -> Result<(Vec<u8>)> {
   let client = Client::new();
   let mut response = try!(client.get(url).send());
@@ -150,7 +153,17 @@ fn get_entries(filter_func: &Fn(&EntryDetail) -> bool,
   // TODO: keep continuing until you have count entries
   let ids = try!(feedly.saved_entry_ids(count));
   let entries = try!(feedly.detail_for_entries(ids));
-  let res: Vec<EntryDetail> = entries.into_iter().filter(filter_func).collect();
+  let res: Vec<EntryDetail> = entries.into_iter()
+    .filter(filter_func)
+    .filter(|e| {
+      if let Some(ref v) = e.visual {
+        if let Some(ref u) = v.url {
+          return u.starts_with("http");
+        }
+      }
+      false
+    })
+    .collect();
   Ok(res)
 }
 
