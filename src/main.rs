@@ -1,18 +1,21 @@
 extern crate clap;
+#[macro_use]
 extern crate hyper;
 extern crate regex;
 extern crate serde_json;
 
 mod args;
 mod config;
+mod dropbox;
 mod feedly;
 mod generated;
 mod result;
 
 use config::ConfigFile;
+use dropbox::Dropbox;
 use feedly::Feedly;
 use generated::EntryDetail;
-use hyper::Client;
+use hyper::{Client, Url};
 use result::{FdownError, Result};
 use std::ffi::OsStr;
 use std::fs::File;
@@ -69,6 +72,21 @@ fn filepath_for_url(url: &String) -> Result<PathBuf> {
 
 fn unsave_entries(entries: &Vec<&EntryDetail>, feedly: &Feedly) -> Result<()> {
   feedly.unsave_entries(entries)
+}
+
+fn upload_entry(entry: &EntryDetail, dropbox: &Dropbox) -> Result<()> {
+  if let Some(url) = Feedly::extract_image_url(entry) {
+    let url = Feedly::tumblr_filter(url);
+    let image_bytes = try!(download_image(&url));
+    let url_s = Url::parse(url.as_str()).unwrap();
+    let path = url_s.path();
+    let slash = path.rfind('/').unwrap();
+    let filename = &path[slash + 1..];
+    let f = "/Media/Porn/Inbox/".to_string() + filename;
+    try!(dropbox.upload(f.as_str(), image_bytes.as_slice()));
+    return Ok(());
+  }
+  Err(result::FdownError::MissingUrl(entry.id.clone()))
 }
 
 fn write_entry(entry: &EntryDetail) -> Result<()> {
@@ -142,8 +160,10 @@ fn real_main() -> Result<()> {
 
   let userid = try!(config.required_string("userid"));
   let token = try!(config.required_string("token"));
+  let dropbox_token = try!(config.required_string("dropboxToken"));
 
   let feedly = Feedly::new(userid, token);
+  let dropbox = Dropbox::new(&dropbox_token);
 
   if args.list_subs() {
     return list_subs(&feedly);
@@ -154,7 +174,7 @@ fn real_main() -> Result<()> {
   let mut successful_entries: Vec<&EntryDetail> = Vec::with_capacity(entries.len());
   for (i, entry) in entries.iter().enumerate() {
     println!("Processing entry {}.", i);
-    match write_entry(entry) {
+    match upload_entry(entry, &dropbox) {
       Ok(_) => successful_entries.push(entry),
       Err(e) => return Err(e),
     }
@@ -166,6 +186,7 @@ fn real_main() -> Result<()> {
   Ok(())
 }
 
+// TODO: check out the unwraps().
 fn main() {
   match real_main() {
     Ok(_) => (),
