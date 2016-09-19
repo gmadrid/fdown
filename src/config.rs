@@ -28,7 +28,7 @@ impl ConfigFile {
         if trimmed.starts_with("#") || trimmed.len() == 0 {
           continue;
         }
-        let (k, v) = try!(split_line(&line));
+        let (k, v) = try!(split_line_at_first_equals(&line));
         hash.insert(k.to_string(), v.to_string());
       }
     }
@@ -60,11 +60,10 @@ fn twiddle<T>(filename: &str, home_dir_provider: T) -> PathBuf
   file_path.to_path_buf()
 }
 
-fn split_line<'a>(line: &'a str) -> Result<(&'a str, &'a str)> {
+fn split_line_at_first_equals(line: &str) -> Result<(&str, &str)> {
   if let Some(pos) = line.find('=') {
-    let key = line[..pos].trim();
-    let value = line[pos + 1..].trim();
-    return Ok((key, value));
+    let (head, tail) = line.split_at(pos);
+    return Ok((head.trim(), &tail[1..].trim()));
   }
 
   Err(FdownError::BadConfig(format!("Missing '=' in config file: \"{}\"", line)))
@@ -86,7 +85,7 @@ impl HasHomedir for BaseHomedirProvider {
 #[cfg(test)]
 mod tests {
   use std::path::PathBuf;
-  use super::{HasHomedir, split_line};
+  use super::{HasHomedir, split_line_at_first_equals};
 
   #[test]
   fn simple_reader() {
@@ -106,20 +105,20 @@ mod tests {
 
   #[test]
   fn split_line_basic() {
-    assert_eq!(("foo", "bar"), split_line("foo=bar").unwrap());
-    assert_eq!(("foo", "bar"), split_line("foo = bar").unwrap());
-    assert_eq!(("foo", "bar"), split_line("foo =bar").unwrap());
-    assert_eq!(("foo", "bar"), split_line("foo= bar").unwrap());
-    assert_eq!(("foo", "bar"), split_line(" foo=bar ").unwrap());
-    assert_eq!(("foo", "bar"), split_line("   foo =  bar    ").unwrap());
+    assert_eq!(("foo", "bar"), split_line_at_first_equals("foo=bar").unwrap());
+    assert_eq!(("foo", "bar"), split_line_at_first_equals("foo = bar").unwrap());
+    assert_eq!(("foo", "bar"), split_line_at_first_equals("foo =bar").unwrap());
+    assert_eq!(("foo", "bar"), split_line_at_first_equals("foo= bar").unwrap());
+    assert_eq!(("foo", "bar"), split_line_at_first_equals(" foo=bar ").unwrap());
+    assert_eq!(("foo", "bar"), split_line_at_first_equals("   foo =  bar    ").unwrap());
 
-    assert_eq!(("foo", ""), split_line("foo=").unwrap());
+    assert_eq!(("foo", ""), split_line_at_first_equals("foo=").unwrap());
   }
 
   #[test]
   #[should_panic]
-  fn split_line_no_equals() {
-    split_line("foo bar").unwrap();
+  fn split_line_with_no_equals() {
+    split_line_at_first_equals("foo bar").unwrap();
   }
 
   struct TestHomeDirProvider {}
@@ -132,9 +131,7 @@ mod tests {
   struct FailingHomeDirProvider {}
   impl HasHomedir for FailingHomeDirProvider {
     fn home_dir(&self) -> PathBuf {
-      println!("{:?}", "QUUX");
       assert!(false);
-      println!("{:?}", "QUUX2");
       PathBuf::from("/never/returns/this")
     }
   }
