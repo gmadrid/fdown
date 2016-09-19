@@ -50,9 +50,9 @@ pub struct MarkerRequestBody {
 }
 
 #[derive(Debug,Serialize)]
-pub struct DropboxUploadAPI {
-  pub path: String,
-  pub mode: String,
+pub struct DropboxUploadAPI<'a> {
+  pub path: &'a str,
+  pub mode: &'a str,
   pub autorename: bool,
   pub mute: bool,
 }

@@ -8,6 +8,7 @@ use serde_json;
 header!{ (DropboxAPIArg, "Dropbox-API-Arg") => [String] }
 
 const UPLOAD_URL : &'static str = "https://content.dropboxapi.com/2/files/upload";
+const ADD_UPLOAD_MODE : &'static str = "add";
 
 #[derive(Debug)]
 pub struct Dropbox {
@@ -24,16 +25,13 @@ impl Dropbox {
   }
 
   fn api_header(&self, api: &DropboxUploadAPI) -> DropboxAPIArg {
-    let header_value: Vec<u8> = serde_json::to_vec(&api).unwrap();
-    let header_string = String::from_utf8(header_value).unwrap();
-    let escaped = header_string;//.replace("\"", "\\\"");
-    DropboxAPIArg(escaped)
+    DropboxAPIArg(serde_json::to_string(&api).unwrap())
   }
 
   pub fn upload(&self, path: &str, contents: &[u8]) -> Result<()> {
     let api = DropboxUploadAPI {
-      path: path.to_string(),
-      mode: "add".to_string(),
+      path: path,
+      mode: ADD_UPLOAD_MODE,
       autorename: true,
       mute: false,
     };
