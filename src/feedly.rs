@@ -177,47 +177,41 @@ mod tests {
       let sent_body = String::from_utf8_lossy(vec_bytes);
       assert_eq!(body_str, sent_body);
     }
+
+    fn get_or_post(&self, url: &str, auth_header: Option<header::Authorization<String>>, body: Option<&[u8]>)
+        -> Result<Vec<u8>> {
+      if self.responses.len() < 1 {
+        return Err(FdownError::TestError);
+      }
+
+      // Save away our arguments for verification.
+      *self.url.borrow_mut() = Some(url.to_string());
+      self.has_auth.set(auth_header.is_some());
+      if body.is_some() {
+        *self.body.borrow_mut() = body.map(|b| Vec::from(b));
+      }  
+      let bytes = self.responses.get(0).unwrap().as_bytes();
+      let vec = From::from(bytes);
+      Ok(vec)
+    }
   }
   impl<'a> HttpMockableClient for NullClient<'a> {
     type R = Cursor<Vec<u8>>;
 
-    // TODO: combine get/set code into single thing.
     fn get(&self,
            url: &str,
            auth_header: Option<header::Authorization<String>>)
         -> Result<Self::R> {
-      if self.responses.len() < 1 {
-        return Err(FdownError::TestError);
-      }
-      // Save away our arguments for verification.
-      *self.url.borrow_mut() = Some(url.to_string());
-      self.has_auth.set(auth_header.is_some());
-
-      let bytes = self.responses.get(0).unwrap().as_bytes();
-      let vec: Vec<u8> = From::from(bytes);
-      let cursor = Cursor::new(vec);
-
-      Ok(cursor)
+      let r = try!(self.get_or_post(url, auth_header, None));
+      Ok(Cursor::new(r))
     }
     fn post(&self,
             url: &str,
             auth_header: Option<header::Authorization<String>>,
             body: &[u8])
         -> Result<Self::R> {
-      if self.responses.len() < 1 {
-        return Err(FdownError::TestError);
-      }
-
-      // Save away our arguments for verification.
-      *self.url.borrow_mut() = Some(url.to_string());
-      self.has_auth.set(auth_header.is_some());
-      *self.body.borrow_mut() = Some(Vec::from(body));
-
-      let bytes = self.responses.get(0).unwrap().as_bytes();
-      let vec: Vec<u8> = From::from(bytes);
-      let cursor = Cursor::new(vec);
-
-      Ok(cursor)
+      let r = try!(self.get_or_post(url, auth_header, Some(body)));
+      Ok(Cursor::new(r))
     }
   }
 
