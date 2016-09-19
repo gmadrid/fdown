@@ -7,6 +7,10 @@ use result::{FdownError, Result};
 use serde_json;
 use std::io::Read;
 
+lazy_static! {
+  static ref TUMBLR_REGEX: Regex = Regex::new(r"_(\d+)(\.[:alnum:]+)$").unwrap();
+}
+
 pub type Feedly = FeedlyInternal<HyperClientWrapper>;
 
 pub struct FeedlyInternal<T>
@@ -91,9 +95,7 @@ impl<T> FeedlyInternal<T>
   }
 
   pub fn tumblr_filter(url: &str) -> String {
-    // TODO: seems wasteful to create this regex every time.
-    let regex = Regex::new(r"_(\d+)(\.[:alnum:]+)$").unwrap();
-    return regex.replace(url, "_1280$2");
+    return TUMBLR_REGEX.replace(url, "_1280$2");
   }
 }
 

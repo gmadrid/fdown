@@ -10,6 +10,7 @@ serde_codegen = "0.8"
 [dependencies]
 clap = "2"
 hyper = "*"
+lazy_static = "0.2.1"
 regex = "*"
 serde = "0.8"
 serde_json = "0.8"

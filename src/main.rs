@@ -1,6 +1,8 @@
 extern crate clap;
 #[macro_use]
 extern crate hyper;
+#[macro_use]
+extern crate lazy_static;
 extern crate regex;
 extern crate serde_json;
 
@@ -24,7 +26,15 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 // TODO: allow selecting feeds, not just categories.
-// TODO: use hyper.url
+// TODO: use hyper.url wherever you can
+// TODO: determine file type of files without extension.
+// TODO: add flag to conf dest dir for Dropbox
+// TODO: add flag to allow local writes (no Dropbox)
+// TODO: allow listing feeds
+// TODO: allow specifying feeds/categories by id.
+// TODO: add option to dump JSON to somewhere
+// TODO: add logging
+// TODO: allow putting cmd line args in config file
 
 fn download_image(url: &String) -> Result<(Vec<u8>)> {
   let client = Client::new();

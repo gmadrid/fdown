@@ -4,6 +4,7 @@ version = "0.1.0"
 dependencies = [
  "clap 2.11.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "hyper 0.9.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lazy_static 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 0.1.77 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 0.8.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_codegen 0.8.8 (registry+https://github.com/rust-lang/crates.io-index)",
