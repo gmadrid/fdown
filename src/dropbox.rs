@@ -4,9 +4,10 @@ use hyper::header::ContentType;
 use hyper::mime::{Mime, SubLevel, TopLevel};
 use result::Result;
 use serde_json;
-use std::io::Read;
 
 header!{ (DropboxAPIArg, "Dropbox-API-Arg") => [String] }
+
+const UPLOAD_URL : &'static str = "https://content.dropboxapi.com/2/files/upload";
 
 #[derive(Debug)]
 pub struct Dropbox {
@@ -36,16 +37,12 @@ impl Dropbox {
       autorename: true,
       mute: false,
     };
-    let url = "https://content.dropboxapi.com/2/files/upload";
-    let client = Client::new();
-    let request = client.post(url)
+    try!(Client::new().post(UPLOAD_URL)
       .body(contents)
       .header(ContentType(Mime(TopLevel::Application, SubLevel::OctetStream, vec![])))
       .header(self.auth_header())
-      .header(self.api_header(&api));
-    let mut response = try!(request.send());
-    let mut foo: String = String::new();
-    response.read_to_string(&mut foo);
+      .header(self.api_header(&api))
+      .send());
     Ok(())
   }
 }

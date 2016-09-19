@@ -46,6 +46,10 @@ impl<'a> Args<'a> {
   pub fn number_of_entries(&self) -> usize {
     self.matches.value_of(COUNT).unwrap_or("20").parse::<usize>().unwrap()
   }
+
+  pub fn write_to_directory(&self) -> bool {
+    false
+  }
 }
 
 fn parse_cmd_line_from<'a, I, T>(itr: I) -> Result<ArgMatches<'a>>

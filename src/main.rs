@@ -201,6 +201,9 @@ fn real_main() -> Result<()> {
       Ok(_) => successful_entries.push(entry),
       Err(e) => return Err(e),
     }
+    if args.write_to_directory() {
+      try!(write_entry(entry));
+    }
   }
   if args.should_unsave() {
     try!(unsave_entries(&successful_entries, &feedly));
