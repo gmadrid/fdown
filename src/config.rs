@@ -12,7 +12,7 @@ pub struct ConfigFile {
 
 impl ConfigFile {
   pub fn new(filename: &str) -> Result<ConfigFile> {
-    let f = try!(File::open(twiddle(filename, BaseHomedirProvider {})));
+    let f = try!(File::open(twiddle(filename, BaseHomedirProvider {}).unwrap_or(PathBuf::from(filename))));
     let reader = BufReader::new(f);
 
     ConfigFile::new_with_bufread(reader)
@@ -42,7 +42,7 @@ impl ConfigFile {
   }
 }
 
-fn twiddle<T>(filename: &str, home_dir_provider: T) -> PathBuf
+fn twiddle<T>(filename: &str, home_dir_provider: T) -> Option<PathBuf>
   where T: HasHomedir {
   let file_path = Path::new(filename);
   let mut components = file_path.components();
@@ -51,13 +51,11 @@ fn twiddle<T>(filename: &str, home_dir_provider: T) -> PathBuf
       if twiddle == "~" {
         let mut home = home_dir_provider.home_dir();
         home.push(components.as_path());
-        return home;
+        return Some(home);
       }
     }
   }
-
-  // TODO: maybe make this return nothing when no twiddle expansion has happened.
-  file_path.to_path_buf()
+  None
 }
 
 fn split_line_at_first_equals(line: &str) -> Result<(&str, &str)> {
@@ -138,14 +136,11 @@ mod tests {
 
   #[test]
   fn twiddle() {
-    assert_eq!(PathBuf::from("/quux"),
-               super::twiddle("/quux", TestHomeDirProvider {}));
-    assert_eq!(PathBuf::from("/foo/bar/home/quux"),
+    assert_eq!(None, super::twiddle("/quux", TestHomeDirProvider {}));
+    assert_eq!(Some(PathBuf::from("/foo/bar/home/quux")),
                super::twiddle("~/quux", TestHomeDirProvider {}));
-    assert_eq!(PathBuf::from("~quux"),
-               super::twiddle("~quux", TestHomeDirProvider {}));
-    assert_eq!(PathBuf::from("/foo/~/bar"),
-               super::twiddle("/foo/~/bar", TestHomeDirProvider {}));
+    assert_eq!(None, super::twiddle("~quux", TestHomeDirProvider {}));
+    assert_eq!(None, super::twiddle("/foo/~/bar", TestHomeDirProvider {}));
   }
 
   #[test]
