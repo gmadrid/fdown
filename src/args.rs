@@ -3,12 +3,12 @@ use result::{FdownError, Result};
 use std::env;
 use std::ffi::OsString;
 
-static CONFIG: &'static str = "config";
-static COUNT: &'static str = "count";
-static CATEGORY: &'static str = "category";
-static DEFAULT_CONFIG: &'static str = "~/.fdown";
-static SUBS: &'static str = "subs";
-static UNSAVE: &'static str = "unsave";
+const CONFIG: &'static str = "config";
+const COUNT: &'static str = "count";
+const CATEGORY: &'static str = "category";
+const DEFAULT_CONFIG: &'static str = "~/.fdown";
+const SUBS: &'static str = "subs";
+const UNSAVE: &'static str = "unsave";
 
 pub struct Args<'a> {
   matches: ArgMatches<'a>,
